@@ -3,9 +3,10 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
 # We use the 'postgresql+asyncpg' driver string
+# We use the 'postgresql+asyncpg' driver string
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "sqlite+aiosqlite:///./nebulax.db"
+    "postgresql+asyncpg://admin:nebulax_secret@nebulax-db:5432/nebulax_core"
 )
 
 # The Async Engine

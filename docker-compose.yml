@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   # --- CORE INFRASTRUCTURE ---
@@ -266,6 +266,155 @@ services:
       resources:
         limits:
           memory: 128M
+
+  # --- TARGET INFRASTRUCTURE ---
+  internal-infra:
+    build: ./services/target/internal-infra
+    container_name: nebulax-internal-infra
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/target/internal-infra:/app
+
+  identity-manager:
+    build: ./services/target/identity-manager
+    container_name: nebulax-identity-manager
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/target/identity-manager:/app
+
+  # --- BLUE TEAM (DEFENSE) ---
+  ids-suricata:
+    build: ./services/blue-team/ids-suricata
+    container_name: nebulax-ids-suricata
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/blue-team/ids-suricata:/app
+
+  edr-agent:
+    build: ./services/blue-team/edr-agent
+    container_name: nebulax-edr-agent
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/blue-team/edr-agent:/app
+
+  # --- RED TEAM (OFFENSE) ---
+  web-injector:
+    build: ./services/red-team/web-injector
+    container_name: nebulax-web-injector
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/red-team/web-injector:/app
+
+  apt-emulator:
+    build: ./services/red-team/apt-emulator
+    container_name: nebulax-apt-emulator
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/red-team/apt-emulator:/app
+
+  # --- GRC & COMPLIANCE ---
+  policy-mapper:
+    build: ./services/grc/policy-mapper
+    container_name: nebulax-policy-mapper
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/grc/policy-mapper:/app
+
+  incident-reporter:
+    build: ./services/grc/incident-reporter
+    container_name: nebulax-incident-reporter
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/grc/incident-reporter:/app
+
+  # --- THREAT INTEL ---
+  cve-feeder:
+    build: ./services/intel/cve-feeder
+    container_name: nebulax-cve-feeder
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/intel/cve-feeder:/app
+
+  ioc-manager:
+    build: ./services/intel/ioc-manager
+    container_name: nebulax-ioc-manager
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/intel/ioc-manager:/app
+
+  # --- SPACE GUARD ---
+  rf-receiver:
+    build: ./services/space-guard/rf-receiver
+    container_name: nebulax-rf-receiver
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/space-guard/rf-receiver:/app
 
 networks:
   nebulax-net:

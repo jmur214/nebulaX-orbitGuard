@@ -11,8 +11,11 @@ WEB_TARGET = "http://nebulax-target-web:5000"
 SSH_TARGET = "nebulax-honeypot"
 SSH_PORT = 2222
 
+import os
+
 # Reporting
-CORE_API_URL = "http://host.docker.internal:8000/events/ingest"
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 
 # Wordlists
 USERS = ["admin", "root", "user", "guest", "support"]

@@ -2,10 +2,13 @@ import time
 import requests
 import schedule
 
+import os
+
 # CONFIGURATION
 # Use host gateway to talk to Core
-CORE_READ_URL = "http://host.docker.internal:8000/events/recent"
-CORE_WRITE_URL = "http://host.docker.internal:8000/events/ingest"
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+CORE_READ_URL = f"http://{CORE_HOST}:8000/events/recent"
+CORE_WRITE_URL = f"http://{CORE_HOST}:8000/events/ingest"
 
 # Load Wordlist
 print(" [ Red Team ] Loading Breach Database (rockyou_sample.txt)...")

@@ -4,8 +4,11 @@ import schedule
 import time
 import json
 
+import os
+
 # CONFIGURATION
-CORE_API_URL = "http://host.docker.internal:8000/events/ingest"
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 
 # Targets to scan (Internal Docker DNS names)
 TARGETS = ["nebulax-target-web", "nebulax-honeypot"]

@@ -6,9 +6,12 @@ import time
 import json
 from datetime import datetime
 
+import os
+
 # CONFIGURATION
 # We connect to the Core via the host gateway
-CORE_API_URL = "http://host.docker.internal:8000/events/ingest"
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 HOST_KEY_PATH = 'server.key'
 SSH_PORT = 2222 # Internal port
 

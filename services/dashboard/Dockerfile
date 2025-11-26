@@ -13,7 +13,8 @@ RUN npm install next@14.0.4 \
                 react-leaflet@4.2.1 \
                 autoprefixer@10.4.16 \
                 postcss@8.4.31 \
-                tailwindcss@3.4.1
+                tailwindcss@3.4.1 \
+                recharts
 
 # 2. Copy code
 COPY . .

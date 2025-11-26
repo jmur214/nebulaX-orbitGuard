@@ -9,7 +9,8 @@ app.secret_key = "astra_dynamics_insecure_key"
 
 # CONFIGURATION
 # Use host.docker.internal to talk to Core
-CORE_API_URL = "http://host.docker.internal:8000/events/ingest"
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 
 # IN-MEMORY DATABASE
 def init_db():

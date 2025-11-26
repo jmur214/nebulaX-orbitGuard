@@ -7,7 +7,11 @@ from skyfield.api import Topos, load, wgs84, utc
 from datetime import datetime, timedelta
 
 # CONFIGURATION
-CORE_API_URL = "http://host.docker.internal:8000/events/ingest"
+import os
+
+# CONFIGURATION
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 # Chicago Coordinates
 GROUND_STATION = Topos('41.8952 N', '87.8257 W')
 

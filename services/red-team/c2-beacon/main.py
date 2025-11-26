@@ -5,8 +5,11 @@ import random
 import json
 import numpy as np # For realistic jitter distribution
 
+import os
+
 # CONFIGURATION
-CORE_API_URL = "http://core-api:8000/events/ingest"
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 
 # Simulated C2 Infrastructure (The "Bad Guys")
 C2_SERVERS = [

@@ -3,29 +3,11 @@ import requests
 import schedule
 from datetime import datetime
 
+import os
+
 # CONFIGURATION
-INTERNAL_URL = "http://nebulax-core:8000"
-HOST_URL = "http://host.docker.internal:8000"
-
-# Memory to prevent spamming alerts for the same event ID
-processed_event_ids = set()
-
-def get_api_url(endpoint):
-    try:
-        requests.get(f"{INTERNAL_URL}/", timeout=1)
-        return f"{INTERNAL_URL}{endpoint}"
-    except:
-        return f"{HOST_URL}{endpoint}"
-
-print(" [ Blue Team ] Resolving Core API connection...")
-BASE_URL = ""
-try:
-    requests.get(f"{INTERNAL_URL}/", timeout=2)
-    BASE_URL = INTERNAL_URL
-    print(" [ Blue Team ] Connected via Internal Docker Network")
-except:
-    print(" [ Blue Team ] Internal DNS failed. Switching to Host Gateway...")
-    BASE_URL = HOST_URL
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+BASE_URL = f"http://{CORE_HOST}:8000"
 
 print(f" [ Blue Team ] Target Core: {BASE_URL}")
 

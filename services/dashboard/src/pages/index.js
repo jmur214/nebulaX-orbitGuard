@@ -22,7 +22,8 @@ export default function Dashboard() {
       try {
         // Use localhost for browser-side fetching
         // Increased limit to 100 to ensure we capture Red Team events amidst frequent TLE updates
-        const response = await axios.get('http://localhost:8000/events/recent?limit=100');
+        const API_HOST = process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:8000';
+        const response = await axios.get(`${API_HOST}/events/recent?limit=100`);
         const data = response.data;
         setEvents(data);
 
