@@ -1,0 +1,2 @@
+implement resources cap
+docker system prune --all --volumes --force deletes all the crap 

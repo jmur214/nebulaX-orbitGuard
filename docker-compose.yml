@@ -1,0 +1,275 @@
+version: '3.8'
+
+services:
+  # --- CORE INFRASTRUCTURE ---
+  postgres:
+    image: postgres:15-alpine
+    container_name: nebulax-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nebulax_secret}
+      POSTGRES_DB: nebulax_core
+    ports:
+      - "5432:5432" # Expose for local hybrid connection
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nebulax-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d nebulax_core"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nebulax-bus
+    ports:
+      - "6379:6379" # Expose for local hybrid connection
+    networks:
+      - nebulax-net
+
+  # --- NEBULAX CORE ---
+  core-api:
+    build: ./services/core
+    container_name: nebulax-core
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://admin:nebulax_secret@nebulax-db:5432/nebulax_core
+      - REDIS_URL=redis://nebulax-bus:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - nebulax-net
+    volumes:
+      - ./services/core:/app # Hot Reload
+
+  # --- VISUALIZATION ---
+  dashboard:
+    build: ./services/dashboard
+    container_name: nebulax-dashboard
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true # Fix for hot reload on some Macs
+    volumes:
+      - ./services/dashboard:/app
+      - /app/node_modules # Prevent overwriting container deps
+    networks:
+      - nebulax-net
+    depends_on:
+      - core-api
+
+  # --- SPACE PLUGINS ---
+  space-tracker:
+    build: ./services/space-guard/tracker
+    container_name: nebulax-space-tracker
+    command: python -u main.py
+    environment:
+      - CORE_API_URL=http://nebulax-core:8000/events/ingest
+    networks:
+      - nebulax-net
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/space-guard/tracker:/app
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  ground-station:
+    build: ./services/space-guard/ground-sim
+    container_name: nebulax-ground-sim
+    ports:
+      - "5001:5000"
+    networks:
+      - nebulax-net
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/space-guard/ground-sim:/app
+
+  # --- TARGET ENVIRONMENT ---
+  target-web:
+    build: ./services/target/public-web
+    container_name: nebulax-target-web
+    command: python app.py
+    ports:
+      - "8080:5000"
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/target/public-web:/app
+
+  # --- BLUE TEAM (DEFENSE) ---
+  blue-sentinel:
+    build: ./services/blue-team/detection-engine
+    container_name: nebulax-blue-sentinel
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/blue-team/detection-engine:/app
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  honeypot:
+    build: ./services/blue-team/honeypot-ssh
+    container_name: nebulax-honeypot
+    command: python -u main.py
+    ports:
+      - "2222:2222"
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/blue-team/honeypot-ssh:/app
+
+  net-watchdog:
+    build: ./services/blue-team/net-watchdog
+    container_name: nebulax-net-watchdog
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/blue-team/net-watchdog:/app
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  net-forensics:
+    build: ./services/blue-team/network-forensics
+    container_name: nebulax-net-forensics
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/blue-team/network-forensics:/app
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # --- RED TEAM (OFFENSE) ---
+  red-attacker:
+    build: ./services/red-team/attack-engine
+    container_name: nebulax-red-attacker
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    depends_on:
+      - ground-station
+      - core-api
+      - honeypot
+      - target-web
+    volumes:
+      - ./services/red-team/attack-engine:/app
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  password-auditor:
+    build: ./services/red-team/password-auditor
+    container_name: nebulax-password-auditor
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/red-team/password-auditor:/app
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  ransomware-sim:
+    build: ./services/red-team/ransomware-sim
+    container_name: nebulax-ransomware
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/red-team/ransomware-sim:/app
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  vuln-scanner:
+    build: ./services/red-team/vuln-scanner
+    container_name: nebulax-vuln-scanner
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/red-team/vuln-scanner:/app
+    deploy:
+      resources:
+        limits:
+          memory: 256M # Nmap needs a bit more RAM
+
+  c2-beacon:
+    build: ./services/red-team/c2-beacon
+    container_name: nebulax-c2-beacon
+    command: python -u main.py
+    networks:
+      - nebulax-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - core-api
+    volumes:
+      - ./services/red-team/c2-beacon:/app
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+networks:
+  nebulax-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
