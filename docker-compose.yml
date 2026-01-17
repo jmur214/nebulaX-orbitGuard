@@ -52,16 +52,16 @@ services:
   # --- VISUALIZATION ---
   dashboard:
     build: ./services/dashboard
-    container_name: nebulax-dashboard
+    container_name: nebulax-dashboard-v2
     command: npm run dev
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
       - WATCHPACK_POLLING=true # Fix for hot reload on some Macs
-    volumes:
-      - ./services/dashboard:/app
-      - /app/node_modules # Prevent overwriting container deps
+#    volumes:
+#      - ./services/dashboard:/app
+#      - /app/node_modules # Prevent overwriting container deps
     networks:
       - nebulax-net
     depends_on:

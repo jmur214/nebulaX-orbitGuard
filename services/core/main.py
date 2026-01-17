@@ -81,17 +81,83 @@ async def ingest_event(event: UniversalEvent, db: AsyncSession = Depends(get_db)
         logger.error(f"Failed to persist event: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Database Error")
 
-@app.get("/events/recent")
-async def get_recent_events(limit: int = 20, db: AsyncSession = Depends(get_db)):
+# --- GAME STATE LOGIC ---
+async def calculate_game_state(db: AsyncSession):
     """
-    Used by the Dashboard polling loop.
-    Returns the X most recent events, ordered by newest first.
+    Calculates the current 'Wargame' score based on event history.
+    This is a dynamic calculation for the prototype.
+    """
+    # 1. Fetch all events (In prod, cache this or use aggregation queries)
+    result = await db.execute(select(EventModel))
+    events = result.scalars().all()
+
+    red_score = 0
+    blue_score = 0
+    
+    # Scoring Rules
+    for e in events:
+        # RED POINTS
+        if e.event_type == "EXPLOIT_SUCCESS": red_score += 50
+        elif e.event_type == "CREDENTIAL_CRACKED": red_score += 30
+        elif e.event_type == "VULN_REPORT": red_score += 10
+        
+        # BLUE POINTS
+        if e.event_type == "THREAT_DETECTED": blue_score += 20
+        elif e.event_type == "AUTH_FAILURE": blue_score += 5
+        elif e.event_type == "COMMAND_EXECUTED": blue_score += 2 # Activity bonus
+
+    # DEFCON Logic (Simple heuristic)
+    # Starts at 5. Goes down as Red Score increases.
+    defcon = 5
+    if red_score > 100: defcon = 4
+    if red_score > 300: defcon = 3
+    if red_score > 500: defcon = 2
+    if red_score > 1000: defcon = 1
+
+    return {
+        "defcon": defcon,
+        "red_score": red_score,
+        "blue_score": blue_score,
+        "status": "ACTIVE_CONFLICT" if red_score > 0 else "PEACE"
+    }
+
+@app.get("/game/state")
+async def get_game_state(db: AsyncSession = Depends(get_db)):
+    state = await calculate_game_state(db)
+    return state
+
+@app.get("/events/recent")
+async def get_recent_events(
+    limit: int = 20, 
+    team: str = None, 
+    exclude_type: str = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Returns recent events, optionally filtered by 'team' (red, blue, space, fusion).
+    Also supports excluding a specific event type (e.g., TLE_UPDATE).
     """
     try:
-        # SQL: SELECT * FROM events ORDER BY timestamp DESC LIMIT {limit}
-        result = await db.execute(
-            select(EventModel).order_by(desc(EventModel.timestamp)).limit(limit)
-        )
+        query = select(EventModel).order_by(desc(EventModel.timestamp)).limit(limit)
+        
+        # Team Filtering Logic
+        if team:
+            if team == "red":
+                # Red Team sees their own actions + public knowledge
+                query = query.filter(EventModel.origin_module.like("red.%"))
+            elif team == "blue":
+                # Blue Team sees defense + alerts
+                query = query.filter(EventModel.origin_module.like("blue.%"))
+            elif team == "space":
+                # Space Command sees orbital data
+                query = query.filter(EventModel.origin_module.like("space.%"))
+            # 'fusion' sees everything (default)
+
+        # Exclusion Logic
+        if exclude_type:
+            query = query.filter(EventModel.event_type != exclude_type)
+
+        result = await db.execute(query)
         events = result.scalars().all()
         return events
     except Exception as e:

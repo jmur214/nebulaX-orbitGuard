@@ -9,6 +9,8 @@ import os
 CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
 BASE_URL = f"http://{CORE_HOST}:8000"
 
+processed_event_ids = set()
+
 print(f" [ Blue Team ] Target Core: {BASE_URL}")
 
 def trigger_alert(severity, title, description, related_ip):

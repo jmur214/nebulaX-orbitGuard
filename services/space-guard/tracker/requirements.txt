@@ -2,3 +2,6 @@ requests==2.31.0
 skyfield==1.46
 schedule==1.2.1
 numpy<2.0.0
+pandas
+scikit-learn
+matplotlib

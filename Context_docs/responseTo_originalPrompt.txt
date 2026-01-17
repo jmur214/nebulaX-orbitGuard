@@ -1,0 +1,122 @@
+This is an outstanding project scope. As your Lead Architect, I can confirm that the NebulaX + OrbitGuard hybrid architecture is not only viable but creates a unique narrative for your résumé.
+
+Most candidates build a "Home Lab" (Blue Team) or a "Script Library" (Red Team). Very few build a Converged Domain System (Cyber + Space) that demonstrates how to handle telemetry and threat intelligence across disparate physical domains.
+
+I confirm I fully understand the architecture: NebulaX provides the plumbing (bus, storage, UI), and OrbitGuard is the high-value domain extension.
+
+Here is the Phase 1 execution plan.
+
+1. Architecture & Data Flow Diagram
+We will use a Hub-and-Spoke architecture with a central Event Bus (API Gateway). This ensures that if the Space module crashes, the Core Blue Team logging continues uninterrupted. It also allows the AI layer to "listen" to everything promiscuously.
+
+graph TD
+    subgraph "User Interface"
+        UI[Mission Control Dashboard]
+        UI -->|REST/WS| API[Core API Gateway / Event Bus]
+    end
+
+    subgraph "Infrastructure"
+        DB[(PostgreSQL Data Store)]
+        Redis[(Redis - Cache/Queue)]
+    end
+
+    API <--> DB
+    API <--> Redis
+
+    subgraph "NebulaX (The Host)"
+        Blue[Blue Team Modules] -->|Log Events| API
+        Red[Red Team Modules] -->|Attack Telemetry| API
+        AI[AI SOC Analyst] <-->|Read/Triage| API
+        Legal[Legal/Policy Mapper] <-->|Read/Report| API
+    end
+
+    subgraph "OrbitGuard (The Super-Plugin)"
+        SatTrack[Space Tracker] -->|TLE Data| API
+        RF[RF Signal Processor] -->|Decoded Signals| API
+        GroundSim[Simulated Ground Station] <-->|Attack Surface| Red
+        GroundSim -->|Health/Status| API
+    end
+Resume Value: This proves you understand Microservices (or Modular Monoliths) and Event-Driven Architecture, which is how enterprise SOCs (Splunk/Palantir) operate.
+
+2. The Universal Event JSON Schema
+To ensure NebulaX and OrbitGuard can talk to each other, we need a strict contract. This schema is designed to handle everything from a failed SSH login to a satellite entering the horizon.
+
+We will use a "Header/Body" structure, similar to standard IP packets.
+
+Schema Definition (event_schema.json):
+{
+  "event_meta": {
+    "id": "uuid-v4-string",
+    "timestamp": "2025-05-21T14:30:00Z",
+    "origin_module": "space.tracker | blue.honeypot | red.attack.engine",
+    "event_type": "TLE_UPDATE | SSH_AUTH_FAIL | EXPLOIT_SUCCESS",
+    "severity": "INFO | LOW | MEDIUM | HIGH | CRITICAL",
+    "classification": "UNCLASSIFIED | SIMULATION | REAL_WORLD"
+  },
+  "context": {
+    "related_ip": "192.168.1.50",
+    "related_asset_id": "SAT-NOAA-19 | VM-UBUNTU-01",
+    "mitre_attack_id": "T1110 (Optional)",
+    "legal_compliance_tag": "CFAA_SAFE_HARBOR | PUBLIC_RF_DATA"
+  },
+  "payload": {
+    "description": "Flexible object containing specific data",
+    "data": {
+      // This section changes based on origin_module
+      // Example Space: { "azimuth": 45.2, "elevation": 12.0, "freq": "137.1MHz" }
+      // Example Cyber: { "user": "root", "password_attempt": "password123" }
+    }
+  }
+}
+
+Why this schema works:
+
+origin_module: Allows the UI to instantly know which widget to render.
+
+classification: Crucial for your "Grey" research. You can tag real RF intercepts as REAL_WORLD and attacks on your sim as SIMULATION. This prevents legal confusion in your reporting.
+
+mitre_attack_id: Instantly maps your project to industry standards.
+
+3. Project Folder Structure (Monorepo)
+We will use a Monorepo structure managed by Docker Compose. This keeps the codebase unified but allows services to run independently.
+nebulax-orbitguard/
+├── .env                    # Global environment variables (DB creds, API keys)
+├── docker-compose.yml      # Orchestration of all modules
+├── README.md               # The "Front Page" of your portfolio
+├── docs/                   # Architecture diagrams and schemas
+│
+├── infrastructure/         # Infrastructure as Code
+│   ├── postgres/           # Initialization scripts
+│   └── nginx/              # Reverse proxy config
+│
+├── services/               # The logic containers
+│   ├── core/               # NebulaX Core (API Gateway & Event Bus)
+│   │   ├── api/
+│   │   ├── db/
+│   │   └── models/
+│   │
+│   ├── dashboard/          # Next.js Frontend
+│   │   ├── src/components/
+│   │   └── src/pages/
+│   │
+│   ├── blue-team/          # Defense Modules
+│   │   ├── honeypots/
+│   │   └── sensor/
+│   │
+│   ├── red-team/           # Offense Modules
+│   │   ├── attack_engine/
+│   │   └── password_lab/
+│   │
+│   ├── space-guard/        # OrbitGuard Plugin
+│   │   ├── tracker/        # Python TLE logic
+│   │   ├── rf_processor/   # GNU Radio / decoder scripts
+│   │   └── ground_sim/     # Vulnerable Flask App
+│   │
+│   └── ai-engine/          # AI Logic
+│       ├── soc_analyst/
+│       └── scenario_gen/
+│
+└── shared/                 # Shared libraries
+    ├── python/             # Shared Python schemas and utils
+    └── typescript/         # Shared Frontend types
+

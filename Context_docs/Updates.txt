@@ -1,0 +1,9 @@
+Notes from me: 
+1. We no longer are using the “Hybrid Workflow” (2b., 2c. (Only the first bullet point of 2c. under the heading: “Storage is Critical”, and it’s three nested points), 7. Bullet points #1 & 2 in file agent2.md, this may be mentioned in other spots as well. From what I can tell ./test_cycle.sh completely avoids the issue with data clogging my system, and I now have 90GB of space. When we implemented the Hybrid Approach, I had anywhere from 10GB-2GB which was problematic. This is no longer a concern and if using ./test_cycle.sh does not cause any problems (verify it doesn’t), this is how we should go about it from now on. 
+2. We were starting to shift away from the gamification aspect of our simulator. I want it to be more real functional and edgy, even if we still are currently using simulation data
+2a. previously I had mentioned to someone that we have made some changes, the problem is I feel this is too much of a "gameified" version, versus what we had prior seemed a bit more realistic. Remember our original goals and how I wanted this to have a high resume impact. We were given the following options, based on what I just said, what is a better way to proceed?
+2b. I still liked how we were simulating things (although I do like the add on of how we could start using real traffic additionally with simulated), I'm not opposed to that aspect for the time being, I just feel like it's more gamified than what we originally had. 
+3. we need to continue to focus on adding to our resume, when we make significant breakthroughs, solutions,  or additions, a quick bullet point summary should be added to NebulaX_Resume_Assets.md
+4. It seems like only the satelite logs are flowing through to the fushion center on the dashboard, in reality all of the logs should be flowing through here
+5. When adding the new sateliete components, it seemed like we depricated some aspects of this dashboard
+6. All of the dashboards graphs need some overhaul 

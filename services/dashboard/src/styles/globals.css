@@ -7,3 +7,13 @@ body {
   color: #e2e8f0; /* Slate 200 */
   font-family: 'Courier New', monospace; /* Hacker aesthetic */
 }
+
+/* Fix for Cesium layout ghosting */
+canvas {
+  display: block;
+}
+
+/* Hide Cesium default credit logo for cleaner UI */
+.cesium-widget-credits {
+  display: none !important;
+}

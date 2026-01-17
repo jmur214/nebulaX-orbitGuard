@@ -30,7 +30,7 @@ def simulate_rf():
             }
         }
         try:
-            requests.post(CORE_API_URL, json=event, timeout=2)
+            requests.post(CORE_API_URL, json=event, timeout=10)
             print(f" [ Space ] Signal Captured: {freq}")
         except Exception as e:
             print(f" [ Space ] Error: {e}")

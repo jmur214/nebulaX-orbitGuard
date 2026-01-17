@@ -48,3 +48,9 @@ class UniversalEvent(BaseModel):
     event_meta: EventMeta
     context: EventContext
     payload: Dict[str, Any]
+
+class GameState(BaseModel):
+    defcon: int
+    red_score: int
+    blue_score: int
+    status: str

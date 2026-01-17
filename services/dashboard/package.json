@@ -15,7 +15,10 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
-    "recharts": "^3.5.0"
+    "recharts": "^3.5.0",
+    "cesium": "1.106.0",
+    "resium": "1.17.2",
+    "satellite.js": "^5.0.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.16",

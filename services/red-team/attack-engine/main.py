@@ -7,9 +7,11 @@ import socket
 
 # CONFIGURATION
 # Targets
-WEB_TARGET = "http://nebulax-target-web:5000"
-SSH_TARGET = "nebulax-honeypot"
-SSH_PORT = 2222
+# CONFIGURATION
+# Targets
+WEB_TARGET = os.getenv("WEB_TARGET", "http://nebulax-target-web:5000")
+SSH_TARGET = os.getenv("SSH_TARGET", "nebulax-honeypot")
+SSH_PORT = int(os.getenv("SSH_PORT", "2222"))
 
 import os
 

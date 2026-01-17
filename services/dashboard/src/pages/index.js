@@ -1,234 +1,83 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { format } from 'date-fns';
-import dynamic from 'next/dynamic';
-import AttackChart from '../components/AttackChart';
-import NetworkTrafficChart from '../components/NetworkTrafficChart';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { useAuth } from '../context/AuthContext';
 
-// --- NEW: Dynamic Import for the Map ---
-// We use 'dynamic' to prevent server-side rendering errors with the Leaflet library
-const SatelliteMap = dynamic(() => import('../components/SatelliteMap'), {
-  ssr: false,
-  loading: () => <div className="h-[350px] w-full bg-slate-900 animate-pulse text-cyan-800 flex items-center justify-center">LOADING MAP DATA...</div>
-});
+export default function MissionSelect() {
+  const { user } = useAuth();
+  const router = useRouter();
 
-export default function Dashboard() {
-  const [events, setEvents] = useState([]);
-  const [telemetry, setTelemetry] = useState(null);
+  const handleModuleClick = (e, targetRoute, requiredRole) => {
+    e.preventDefault();
 
-  // Polling Logic
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Use localhost for browser-side fetching
-        // Increased limit to 100 to ensure we capture Red Team events amidst frequent TLE updates
-        const API_HOST = process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:8000';
-        const response = await axios.get(`${API_HOST}/events/recent?limit=100`);
-        const data = response.data;
-        setEvents(data);
-
-        // Extract latest space telemetry
-        const latestSpace = data.find(e => e.origin_module === 'space.tracker');
-        if (latestSpace) {
-          setTelemetry(latestSpace.payload);
-        }
-      } catch (error) {
-        console.error("Connection Error:", error);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
+    // If logged in and has correct role (or is Fusion director), go through
+    if (user && (user.role === requiredRole || user.role === 'FUSION')) {
+      router.push(targetRoute);
+    } else {
+      // Otherwise, go to login with target
+      router.push(`/login?target=${targetRoute}`);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-cyan-500 font-mono p-6 selection:bg-cyan-900 selection:text-white">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center font-mono p-4">
 
-      {/* --- HEADER --- */}
-      <header className="mb-8 border-b border-cyan-900/50 pb-4 flex justify-between items-end">
-        <div>
-          <h1 className="text-5xl font-black tracking-tighter text-white mb-1">
-            NEBULA<span className="text-cyan-500">X</span>
-          </h1>
-          <p className="text-xs text-cyan-700 tracking-[0.3em]">ORBITGUARD DEFENSE MATRIX // v2.4.0</p>
-        </div>
-        <div className="text-right hidden md:block">
-          <div className="text-xs text-emerald-500 animate-pulse">● SYSTEM ONLINE</div>
-          <div className="text-xs text-slate-500">SECURE CONNECTION ESTABLISHED</div>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        {/* --- COL 1: SATELLITE TELEMETRY (4 Columns wide) --- */}
-        <div className="lg:col-span-4 space-y-6">
-
-          {/* --- NEW: 2D MAP COMPONENT --- */}
-          {/* This sits on top of the data card for maximum visual impact */}
-          <div className="shadow-[0_0_20px_rgba(8,145,178,0.2)]">
-            <SatelliteMap telemetry={telemetry} />
+      <div className="text-center mb-12">
+        <h1 className="text-6xl font-black text-white tracking-tighter mb-2">
+          ASTRA <span className="text-cyan-500">DYNAMICS</span>
+        </h1>
+        <p className="text-slate-500 tracking-[0.5em] text-sm uppercase">
+          Cyber-Physical Wargame Platform
+        </p>
+        {user && (
+          <div className="mt-4 text-emerald-500 text-xs tracking-widest border border-emerald-900/50 bg-emerald-950/20 inline-block px-4 py-1 rounded-full">
+            IDENTITY VERIFIED: {user.username.toUpperCase()} // {user.role}
           </div>
+        )}
+      </div>
 
-          {/* Status Card */}
-          <div className="bg-slate-900/50 border border-cyan-900/50 p-6 rounded-sm shadow-[0_0_15px_rgba(8,145,178,0.1)]">
-            <h2 className="text-sm text-cyan-400 font-bold border-b border-cyan-800 pb-2 mb-4 tracking-widest">
-              SAT-LINK // TELEMETRY
-            </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
 
-            {!telemetry ? (
-              <div className="text-center py-10 text-cyan-800 animate-pulse">
-                SEARCHING FOR SIGNAL...
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 text-xs">TARGET ASSET</span>
-                  <span className="text-white font-bold text-lg">{telemetry.sat_name}</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div className="bg-slate-950 p-3 border border-slate-800">
-                    <div className="text-slate-500 text-[10px]">AZIMUTH</div>
-                    <div className="text-xl text-cyan-300">{telemetry.azimuth}°</div>
-                  </div>
-                  <div className="bg-slate-950 p-3 border border-slate-800">
-                    <div className="text-slate-500 text-[10px]">ELEVATION</div>
-                    <div className="text-xl text-cyan-300">{telemetry.elevation}°</div>
-                  </div>
-                </div>
-
-                {/* --- NEXT PASS PREDICTION --- */}
-                <div className="bg-slate-950 p-3 border border-slate-800">
-                  <div className="text-slate-500 text-[10px]">NEXT ACQUISITION (UTC)</div>
-                  <div className="text-lg text-emerald-400 font-mono font-bold">
-                    {telemetry.next_pass && telemetry.next_pass !== "NO PASS < 24H"
-                      ? format(new Date(telemetry.next_pass), 'HH:mm:ss')
-                      : <span className="text-amber-500 text-sm">NO PASS &lt; 24H</span>
-                    }
-                  </div>
-                </div>
-
-                <div className="bg-slate-950 p-3 border border-slate-800">
-                  <div className="text-slate-500 text-[10px]">SLANT RANGE</div>
-                  <div className="text-xl text-white">{telemetry.distance_km} <span className="text-sm text-slate-600">km</span></div>
-                </div>
-
-                {/* Visibility Status Box */}
-                <div className={`mt-4 p-3 text-center border border-dashed tracking-widest font-bold transition-colors duration-500
-                  ${telemetry.visibility === 'VISIBLE'
-                    ? 'bg-red-950/30 border-red-500 text-red-500 animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.2)]'
-                    : 'bg-slate-900 border-slate-700 text-slate-600'}`}>
-                  {telemetry.visibility === 'VISIBLE' ? '⚠ TARGET ACQUIRED' : '// BELOW HORIZON'}
-                </div>
-              </div>
-            )}
+        {/* RED TEAM */}
+        <div onClick={(e) => handleModuleClick(e, '/red', 'RED_TEAM')} className="cursor-pointer group relative overflow-hidden bg-red-950/20 border border-red-900/50 p-8 hover:bg-red-900/40 transition-all duration-300 hover:scale-[1.02]">
+          <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-50 transition-opacity">
+            <svg className="w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
           </div>
-
-          {/* Decorative "Systems" Box */}
-          <div className="bg-slate-900/30 border border-slate-800 p-4 rounded-sm opacity-75">
-            <h3 className="text-xs text-slate-500 mb-2">SUBSYSTEMS</h3>
-            <div className="grid grid-cols-3 gap-2 text-[10px] text-center">
-              <div className="bg-emerald-900/20 text-emerald-600 border border-emerald-900/30 py-1">PHYSICS: OK</div>
-              <div className="bg-emerald-900/20 text-emerald-600 border border-emerald-900/30 py-1">DB: ONLINE</div>
-              <div className="bg-amber-900/20 text-amber-600 border border-amber-900/30 py-1 animate-pulse">RED TEAM: ACTIVE</div>
-            </div>
-          </div>
-
-          {/* --- NEW: CHARTS SECTION --- */}
-          <AttackChart events={events} />
-          <NetworkTrafficChart events={events} />
+          <h2 className="text-2xl font-bold text-red-500 mb-2">RED TEAM</h2>
+          <p className="text-red-300/60 text-sm">The Syndicate. Offensive Operations. Breach the perimeter.</p>
         </div>
 
-        {/* --- COL 2: EVENT LOG (8 Columns wide) --- */}
-        <div className="lg:col-span-8 bg-slate-900/50 border border-cyan-900/50 rounded-sm flex flex-col shadow-[0_0_15px_rgba(8,145,178,0.1)]">
-          <div className="p-4 border-b border-cyan-900/50 flex justify-between items-center">
-            <h2 className="text-sm text-cyan-400 font-bold tracking-widest">
-              CENTRAL EVENT BUS // LIVE FEED
-            </h2>
-            <span className="text-[10px] text-slate-600">POLLING RATE: 5000ms</span>
+        {/* BLUE TEAM */}
+        <div onClick={(e) => handleModuleClick(e, '/blue', 'BLUE_TEAM')} className="cursor-pointer group relative overflow-hidden bg-blue-950/20 border border-blue-900/50 p-8 hover:bg-blue-900/40 transition-all duration-300 hover:scale-[1.02]">
+          <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-50 transition-opacity">
+            <svg className="w-16 h-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
           </div>
-
-          <div className="overflow-y-auto h-[600px] p-4 space-y-1 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-slate-950">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-900 text-slate-500 border-b border-slate-700">
-                <tr>
-                  <th className="pb-2 pl-2 font-normal">TIME (UTC)</th>
-                  <th className="pb-2 font-normal">MODULE</th>
-                  <th className="pb-2 font-normal">EVENT TYPE & DETAILS</th>
-                  <th className="pb-2 font-normal text-right pr-2">SEVERITY</th>
-                </tr>
-              </thead>
-              <tbody className="font-mono">
-                {events.map((event) => (
-                  <tr key={event.id} className="border-b border-slate-800/50 hover:bg-cyan-900/10 transition-colors group">
-
-                    {/* Timestamp */}
-                    <td className="py-3 pl-2 text-slate-500 group-hover:text-cyan-400 align-top">
-                      {format(new Date(event.timestamp), 'HH:mm:ss')}
-                    </td>
-
-                    {/* Module Name */}
-                    <td className="py-3 align-top">
-                      <span className="bg-slate-800 text-slate-300 px-1 rounded text-[10px] border border-slate-700">
-                        {event.origin_module}
-                      </span>
-                    </td>
-
-                    {/* Event Type & Detail Column (UPDATED LOGIC) */}
-                    <td className="py-3 align-top">
-                      <div className={`font-bold ${event.origin_module.startsWith('red.') ? 'text-red-500' :
-                        event.origin_module.startsWith('blue.') ? 'text-blue-400' :
-                          event.origin_module.startsWith('space.') ? 'text-white' :
-                            'text-cyan-300'
-                        }`}>
-                        {event.event_type}
-                      </div>
-
-                      {/* SMART DETAILS: Show context based on event type */}
-                      <div className="text-[10px] text-slate-500 font-mono mt-1">
-                        {event.event_type === 'VULN_REPORT' && (
-                          <span>OPEN PORT: {event.payload?.port}/{event.payload?.service}</span>
-                        )}
-                        {event.event_type === 'CREDENTIAL_CRACKED' && (
-                          <span className="text-amber-400">USER: {event.payload?.cracked_user} | PASS: {event.payload?.weak_password}</span>
-                        )}
-                        {event.event_type === 'AUTH_FAILURE' && (
-                          <span>USER: {event.payload?.username} | IP: {event.context?.related_ip}</span>
-                        )}
-                        {event.event_type === 'THREAT_DETECTED' && (
-                          <span className="text-red-400 font-bold">{event.payload?.alert_title}</span>
-                        )}
-                        {event.event_type === 'NETWORK_FLOW' && (
-                          <span>DEST: {event.context?.related_ip} | {event.payload?.bytes_out} bytes</span>
-                        )}
-                        {event.event_type === 'COMMAND_EXECUTED' && (
-                          <span className="text-green-400">$ {event.payload?.command}</span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Severity Badge */}
-                    <td className="py-3 text-right pr-2 align-top">
-                      <span className={`inline-block px-2 py-1 rounded-sm text-[10px] font-bold tracking-wider
-                        ${event.severity === 'HIGH' ? 'bg-red-500/20 text-red-400 border border-red-900/50' :
-                          event.severity === 'CRITICAL' ? 'bg-red-900/50 text-red-200 border border-red-500 animate-pulse' :
-                            event.severity === 'MEDIUM' ? 'bg-amber-500/20 text-amber-400 border border-amber-900/50' :
-                              'bg-cyan-500/10 text-cyan-600 border border-cyan-900/30'}`}>
-                        {event.severity}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {events.length === 0 && (
-              <div className="text-center text-slate-600 py-20">NO EVENTS DETECTED</div>
-            )}
-          </div>
+          <h2 className="text-2xl font-bold text-blue-400 mb-2">BLUE TEAM</h2>
+          <p className="text-blue-300/60 text-sm">Astra SecOps. Defense Center. Detect and contain.</p>
         </div>
 
+        {/* SPACE COMMAND */}
+        <div onClick={(e) => handleModuleClick(e, '/space', 'SPACE_CMD')} className="cursor-pointer group relative overflow-hidden bg-emerald-950/20 border border-emerald-900/50 p-8 hover:bg-emerald-900/40 transition-all duration-300 hover:scale-[1.02]">
+          <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-50 transition-opacity">
+            <svg className="w-16 h-16 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+          </div>
+          <h2 className="text-2xl font-bold text-emerald-400 mb-2">SPACE COMMAND</h2>
+          <p className="text-emerald-300/60 text-sm">OrbitGuard. Telemetry & Physics. Maintain the link.</p>
+        </div>
+
+        {/* FUSION CENTER */}
+        <div onClick={(e) => handleModuleClick(e, '/fusion', 'FUSION')} className="cursor-pointer group relative overflow-hidden bg-purple-950/20 border border-purple-900/50 p-8 hover:bg-purple-900/40 transition-all duration-300 hover:scale-[1.02]">
+          <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-50 transition-opacity">
+            <svg className="w-16 h-16 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+          </div>
+          <h2 className="text-2xl font-bold text-purple-400 mb-2">FUSION CENTER</h2>
+          <p className="text-purple-300/60 text-sm">Executive Oversight. God View. Total situational awareness.</p>
+        </div>
+
+      </div>
+
+
+      <div className="mt-12 text-slate-600 text-xs">
+        SECURE TERMINAL // AUTHORIZED PERSONNEL ONLY
       </div>
     </div>
   );
