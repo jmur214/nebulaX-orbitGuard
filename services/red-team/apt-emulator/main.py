@@ -23,7 +23,7 @@ STAGES = [
 ]
 
 def simulate_campaign():
-    if random.random() < 0.1:
+    if random.random() < 0.5: # 50% chance (increased for visibility)
         stage = random.choice(STAGES)
         event = {
             "event_meta": {

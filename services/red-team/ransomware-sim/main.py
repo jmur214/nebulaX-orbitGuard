@@ -3,9 +3,11 @@ import requests
 import schedule
 import random
 import json
+import os
 
 # CONFIGURATION
-CORE_API_URL = "http://host.docker.internal:8000/events/ingest"
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 
 # Targets (Internal Docker DNS names or simulated IPs)
 TARGETS = ["10.0.0.55 (HR-Workstation)", "10.0.0.12 (CEO-Laptop)", "10.0.0.88 (Finance-Server)"]
@@ -38,7 +40,7 @@ def encrypt_files():
     }
     
     try:
-        requests.post(CORE_API_URL, json=event)
+        requests.post(CORE_API_URL, json=event, timeout=2)
     except:
         pass
         
@@ -62,7 +64,7 @@ def encrypt_files():
     }
     
     try:
-        requests.post(CORE_API_URL, json=note_event)
+        requests.post(CORE_API_URL, json=note_event, timeout=2)
     except:
         pass
 

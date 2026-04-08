@@ -16,6 +16,7 @@ export default function SpaceCommand() {
     const [fingerprint, setFingerprint] = useState(null);
     const [selectedSatName, setSelectedSatName] = useState(null); // NULL = Monitor Mode (View All)
     const [filterCountry, setFilterCountry] = useState("ALL");
+    const [orbitPath, setOrbitPath] = useState(null); // On-demand orbit path
 
     // ERROR DISPLAY
     const [lastError, setLastError] = useState(null);
@@ -103,6 +104,29 @@ export default function SpaceCommand() {
         return `T-MINUS ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     };
 
+    // Handle satellite selection - fetch orbit on-demand
+    const handleSatelliteSelect = async (sat) => {
+        if (!sat) {
+            setSelectedSatName(null);
+            setOrbitPath(null);
+            return;
+        }
+
+        setSelectedSatName(sat.sat_name);
+        setOrbitPath(null); // Clear previous
+
+        // Fetch orbit path on-demand
+        try {
+            const API_HOST = process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:8000';
+            const response = await axios.get(`${API_HOST}/satellite/orbit?sat_name=${encodeURIComponent(sat.sat_name)}`);
+            setOrbitPath(response.data.orbit_path);
+            console.log(`Fetched orbit for ${sat.sat_name}: ${response.data.points} points`);
+        } catch (error) {
+            console.warn(`Could not fetch orbit for ${sat.sat_name}:`, error.message);
+            setOrbitPath(null);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-950 text-emerald-400 font-mono p-6 selection:bg-emerald-900 selection:text-white">
             <WarHeader title="ORBITGUARD" subtitle="SPACE COMMAND" />
@@ -121,8 +145,9 @@ export default function SpaceCommand() {
                         <SatelliteGlobe
                             satellites={filteredSatellites}
                             selectedSat={selectedSat}
+                            orbitPath={orbitPath}
                             fingerprint={fingerprint}
-                            onSatelliteSelect={(sat) => setSelectedSatName(sat?.sat_name || null)}
+                            onSatelliteSelect={handleSatelliteSelect}
                         />
 
                         {/* CONTROLS OVERLAY */}

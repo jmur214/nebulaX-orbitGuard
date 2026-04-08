@@ -16,7 +16,7 @@ print(" [ Target ] Identity Manager Online")
 print(" [ Target ] Generating synthetic employee personas...")
 
 def simulate_activity():
-    if random.random() < 0.2:
+    if random.random() < 0.5: # 50% chance (increased for visibility)
         profile = fake.profile()
         event = {
             "event_meta": {

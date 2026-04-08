@@ -92,8 +92,9 @@ The system is currently in a **Functional Prototype** state. The Core Event Bus 
 
 ### Future (Roadmap)
 *   **Near Term:**
-    *   UI Overhaul: "Military/Intel" aesthetic.
+    *   UI Overhaul
     *   Verify all submodules (Red/Blue) are actually generating valid events.
+    *   Remidy lag/computational load
 *   **Long Term:**
     *   **AI Integration:** Implement `ai-engine` for automated SOC analysis.
     *   **Hardware:** Real RF decoding with RTL-SDR.
@@ -102,4 +103,4 @@ The system is currently in a **Functional Prototype** state. The Core Event Bus 
 
 ## 4. Known Issues
 *   **Submodule Verification:** Many Red/Blue submodules exist but haven't been rigorously tested in the new Docker environment.
-*   **Dashboard Graphs:** Need redesign to match the new "Realistic" aesthetic.
+*   **Dashboard Graphs:** Needs redesign 

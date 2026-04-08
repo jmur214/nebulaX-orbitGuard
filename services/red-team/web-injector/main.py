@@ -21,7 +21,7 @@ PAYLOADS = [
 ]
 
 def simulate_attack():
-    if random.random() < 0.2:
+    if random.random() < 0.5: # 50% chance (increased for visibility)
         payload = random.choice(PAYLOADS)
         # 1. Simulate the actual attack (fire and forget)
         try:

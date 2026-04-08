@@ -9,7 +9,7 @@ import random
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
-from skyfield.api import Topos, load, wgs84, utc
+from skyfield.api import Topos, load, wgs84, utc, EarthSatellite
 from datetime import datetime, timedelta
 
 # CONFIGURATION
@@ -19,8 +19,8 @@ CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 GROUND_STATION = Topos('41.8952 N', '87.8257 W')
 
 # SPACE-TRACK CREDENTIALS
-ST_USER = os.getenv("ST_USER", "jsm13700@gmail.com")
-ST_PASS = os.getenv("ST_PASS", "alalalal11221122")
+ST_USER = os.getenv("ST_USER")
+ST_PASS = os.getenv("ST_PASS")
 ST_BASE = "https://www.space-track.org"
 
 print(" [ OrbitGuard ] Satellite Tracking System Online...")
@@ -37,6 +37,9 @@ def fetch_spacetrack_metadata(sat_objects):
     
     session = requests.Session()
     # Login Flow
+    if not ST_USER or not ST_PASS:
+        return {}
+        
     try:
         resp = session.post(f"{ST_BASE}/ajaxauth/login", data={"identity": ST_USER, "password": ST_PASS}, timeout=10)
         if resp.status_code != 200: return {}
@@ -83,18 +86,44 @@ def fetch_spacetrack_tles():
     """
     session = requests.Session()
     try:
+        if not ST_USER or not ST_PASS:
+            raise ValueError("Space-Track credentials missing. Ensure .env is loaded.")
+            
         session.post(f"{ST_BASE}/ajaxauth/login", data={"identity": ST_USER, "password": ST_PASS}, timeout=10)
         
         favorites_ids = "25544,20580,43013,25994,27424" # ISS, HST, NOAA 20, TERRA, AQUA
-        tles_fav = session.get(f"{ST_BASE}/basicspacedata/query/class/gp/NORAD_CAT_ID/{favorites_ids}/ORDINAL/1/EPOCH/%3Enow-30/format/tle").text
+        tles_fav = session.get(f"{ST_BASE}/basicspacedata/query/class/gp/NORAD_CAT_ID/{favorites_ids}/ORDINAL/1/EPOCH/%3Enow-30/format/3le").text
         
         # Reduced limit to ensure success
-        tles_large = session.get(f"{ST_BASE}/basicspacedata/query/class/gp/RCS_SIZE/LARGE/DECAY/null/limit/30/orderby/LAUNCH_DATE%20desc/format/tle").text
+        tles_large = session.get(f"{ST_BASE}/basicspacedata/query/class/gp/RCS_SIZE/LARGE/DECAY/null/limit/30/orderby/LAUNCH_DATE%20desc/format/3le").text
         
         full_tle_text = tles_fav + "\n" + tles_large
-        import io
-        return load.tle_file(io.StringIO(full_tle_text))
-    except:
+        
+        # Manual Parse to ensure we keep TLE lines
+        lines = full_tle_text.strip().splitlines()
+        ts = load.timescale()
+        sats = []
+        
+        for i in range(0, len(lines), 3):
+            if i+2 < len(lines):
+                # SpaceTrack 3le format: 0:Name (with '0 ' prefix sometimes), 1:Line1, 2:Line2
+                name = lines[i].strip()
+                if name.startswith("0 "): name = name[2:] # Remove '0 ' prefix if present
+                
+                l1 = lines[i+1].strip()
+                l2 = lines[i+2].strip()
+                
+                try:
+                    s = EarthSatellite(l1, l2, name, ts)
+                    s.tle_line1 = l1
+                    s.tle_line2 = l2
+                    sats.append(s)
+                except Exception:
+                    continue
+                    
+        return sats
+    except Exception as e:
+        print(f"[!] SpaceTrack Fetch Error: {e}")
         return []
 
 # Execute Data Load Strategy
@@ -103,9 +132,34 @@ active_sats = fetch_spacetrack_tles()
 
 if not active_sats:
     print("[!] SpaceTrack TLE Fetch Failed. Falling back to Celestrak...")
-    stations_list = load.tle_file(url='https://celestrak.org/NORAD/elements/stations.txt', reload=False)
-    # Only load stations to keep it fast if API fails
-    active_sats = stations_list
+    try:
+        url = 'https://celestrak.org/NORAD/elements/stations.txt'
+        resp = requests.get(url)
+        lines = resp.text.strip().splitlines()
+        
+        ts = load.timescale()
+        stations_list = []
+        
+        # Parse 3 lines at a time
+        for i in range(0, len(lines), 3):
+            if i+2 < len(lines):
+                name = lines[i].strip()
+                l1 = lines[i+1].strip()
+                l2 = lines[i+2].strip()
+                
+                # Create satellite
+                s = EarthSatellite(l1, l2, name, ts)
+                
+                # IMPORTANT: Save lines for API usage
+                s.tle_line1 = l1
+                s.tle_line2 = l2
+                
+                stations_list.append(s)
+                
+        active_sats = stations_list
+    except Exception as e:
+        print(f"[!] Critical Error loading fallback TLEs: {e}")
+        active_sats = []
 
 # ALWAYS try to fetch metadata, even for Celestrak data
 sat_metadata = fetch_spacetrack_metadata(active_sats)
@@ -359,9 +413,8 @@ def telemetry_cycle():
                     visibility = "BELOW_HORIZON"
                     severity = "INFO"
 
-                # 3. Prediction & Path (For Priority Targets)
+                # 3. Next Pass Prediction (For Priority Targets only)
                 next_pass_time = None
-                orbit_path = []
                 
                 # Check priority (Exact match or substring match against our PRIORITY list or Favorite IDs)
                 is_priority = False
@@ -369,16 +422,9 @@ def telemetry_cycle():
                     is_priority = True
                 
                 if is_priority:
-                    # Next Pass
+                    # Next Pass (still calculated for priority targets)
                     next_pass_time = get_next_pass(sat)
-                    
-                    # Orbit Path (90 mins) - 3D [Lat, Lon, Alt]
-                    base_time = t.utc_datetime()
-                    for i in range(0, 91, 2):
-                        future_time = base_time + timedelta(minutes=i)
-                        ts_time = ts.from_datetime(future_time)
-                        sub = wgs84.subpoint(sat.at(ts_time))
-                        orbit_path.append([sub.latitude.degrees, sub.longitude.degrees, sub.elevation.km])
+                    # NOTE: orbit_path is now computed on-demand via /satellite/orbit API
 
                 payload = {
                     "sat_name": name,
@@ -389,12 +435,11 @@ def telemetry_cycle():
                     "geo_lat": sat_lat,
                     "geo_lng": sat_lon,
                     "geo_alt": sat_alt,
-                    "orbit_path": orbit_path, 
                     "next_pass": next_pass_time,
                     "timestamp": t.utc_iso(),
                     "tle": {
-                        "line1": getattr(sat.model, 'line1', None) or getattr(sat.model, 'tle_line1', "MISSING"),
-                        "line2": getattr(sat.model, 'line2', None) or getattr(sat.model, 'tle_line2', "MISSING")
+                        "line1": getattr(sat, 'tle_line1', None) or getattr(sat.model, 'line1', None) or "MISSING",
+                        "line2": getattr(sat, 'tle_line2', None) or getattr(sat.model, 'line2', None) or "MISSING"
                     },
                     # Enhanced Metadata
                     "orbital_params": params,
@@ -434,7 +479,7 @@ def telemetry_cycle():
     except Exception as e:
         print(f"[!] Cycle Error: {e}")
 
-schedule.every(5).seconds.do(telemetry_cycle)
+schedule.every(60).seconds.do(telemetry_cycle)  # Reduced from 5s for efficiency
 
 while True:
     schedule.run_pending()

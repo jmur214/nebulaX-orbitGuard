@@ -2,6 +2,32 @@ import React, { useEffect, useRef } from 'react';
 import { Viewer, Entity, useCesium, ScreenSpaceEventHandler, ScreenSpaceEvent } from 'resium';
 import * as Cesium from 'cesium';
 
+// Country-to-Color mapping for satellite visualization
+const COUNTRY_COLORS = {
+    'US': Cesium.Color.fromCssColorString('#3B82F6'),      // Blue (USA)
+    'CIS': Cesium.Color.fromCssColorString('#EF4444'),     // Red (Russia/CIS)
+    'RUS': Cesium.Color.fromCssColorString('#EF4444'),     // Red (Russia)
+    'PRC': Cesium.Color.fromCssColorString('#F59E0B'),     // Orange (China)
+    'CHN': Cesium.Color.fromCssColorString('#F59E0B'),     // Orange (China alternate code)
+    'ESA': Cesium.Color.fromCssColorString('#8B5CF6'),     // Purple (European Space Agency)
+    'JPN': Cesium.Color.fromCssColorString('#EC4899'),     // Pink (Japan)
+    'IND': Cesium.Color.fromCssColorString('#10B981'),     // Emerald (India)
+    'FR': Cesium.Color.fromCssColorString('#6366F1'),      // Indigo (France)
+    'UK': Cesium.Color.fromCssColorString('#14B8A6'),      // Teal (UK)
+    'GER': Cesium.Color.fromCssColorString('#84CC16'),     // Lime (Germany)
+    'CA': Cesium.Color.fromCssColorString('#F97316'),      // Orange-red (Canada)
+    'ISR': Cesium.Color.fromCssColorString('#06B6D4'),     // Cyan (Israel)
+    'UNK': Cesium.Color.fromCssColorString('#6B7280'),     // Gray (Unknown)
+};
+
+// Helper function to get color for a satellite
+const getSatelliteColor = (sat, isSelected) => {
+    if (isSelected) return Cesium.Color.YELLOW;
+
+    const country = sat.verified_metadata?.country || sat.origin_prediction?.country || 'UNK';
+    return COUNTRY_COLORS[country] || COUNTRY_COLORS['UNK'];
+};
+
 /**
  * Setup - Adds OSM imagery and configures initial camera
  */
@@ -80,15 +106,42 @@ const ClickHandler = ({ satellites, onSatelliteSelect }) => {
 /**
  * SatelliteGlobe - Main globe component with satellite entities
  */
-const SatelliteGlobe = ({ satellites = [], selectedSat, onSatelliteSelect }) => {
+const SatelliteGlobe = ({ satellites = [], selectedSat, orbitPath, onSatelliteSelect }) => {
     useEffect(() => {
         console.log("=== SatelliteGlobe mounted, satellites:", satellites.length);
         if (satellites.length > 0) {
             console.log(">>> First satellite data:", satellites[0]);
             const withGeo = satellites.filter(s => s.geo_lat != null && s.geo_lng != null);
             console.log(">>> Satellites with geo coordinates:", withGeo.length, "/", satellites.length);
+            console.log(">>> Satellites with geo coordinates:", withGeo.length, "/", satellites.length);
         }
     }, [satellites.length]);
+
+    // DEBUG: Log Orbit Path updates
+    useEffect(() => {
+        if (orbitPath && orbitPath.length > 0) {
+            console.log(">>> SatelliteGlobe received orbitPath points:", orbitPath.length);
+            console.log(">>> First point:", orbitPath[0]); // [lat, lon, alt]
+        } else {
+            console.log(">>> SatelliteGlobe orbitPath is NULL");
+        }
+    }, [orbitPath]);
+
+    // Convert orbitPath prop to Cesium format - use useMemo to ensure proper updates
+    const orbitPositions = React.useMemo(() => {
+        if (!orbitPath || orbitPath.length === 0) return null;
+
+        const flatArray = [];
+        orbitPath.forEach(point => {
+            // API returns [lat, lon, alt_km]
+            flatArray.push(point[1]); // longitude
+            flatArray.push(point[0]); // latitude
+            flatArray.push((point[2] || 400) * 1000); // altitude in meters
+        });
+
+        console.log(">>> Computing orbitPositions, first coords: lon=" + flatArray[0] + ", lat=" + flatArray[1]);
+        return Cesium.Cartesian3.fromDegreesArrayHeights(flatArray);
+    }, [orbitPath]);
 
     return (
         <div style={{ width: '100%', height: '100%' }}>
@@ -108,6 +161,19 @@ const SatelliteGlobe = ({ satellites = [], selectedSat, onSatelliteSelect }) => 
                 <Setup />
                 <ClickHandler satellites={satellites} onSatelliteSelect={onSatelliteSelect} />
 
+                {/* Orbit Path - single entity for selected satellite */}
+                {selectedSat && orbitPositions && (
+                    <Entity
+                        key={`orbit-${selectedSat.sat_name}`} // Force re-mount on change
+                        polyline={{
+                            positions: orbitPositions,
+                            width: 3,
+                            material: Cesium.Color.CYAN.withAlpha(0.8),
+                            clampToGround: false
+                        }}
+                    />
+                )}
+
                 {/* Satellite entities */}
                 {satellites.map((sat, index) => {
                     const lat = sat.geo_lat;
@@ -115,6 +181,8 @@ const SatelliteGlobe = ({ satellites = [], selectedSat, onSatelliteSelect }) => 
                     if (lat == null || lng == null) return null;
 
                     const isSelected = selectedSat?.sat_name === sat.sat_name;
+                    const country = sat.verified_metadata?.country || sat.origin_prediction?.country || 'UNK';
+                    const satColor = getSatelliteColor(sat, isSelected);
 
                     return (
                         <Entity
@@ -122,6 +190,7 @@ const SatelliteGlobe = ({ satellites = [], selectedSat, onSatelliteSelect }) => 
                             name={sat.sat_name}
                             description={`
                                 <b>Satellite:</b> ${sat.sat_name}<br/>
+                                <b>Country:</b> ${country}<br/>
                                 <b>Altitude:</b> ${sat.geo_alt?.toFixed(1) || 'N/A'} km<br/>
                                 <b>Latitude:</b> ${lat?.toFixed(3)}°<br/>
                                 <b>Longitude:</b> ${lng?.toFixed(3)}°<br/>
@@ -129,8 +198,8 @@ const SatelliteGlobe = ({ satellites = [], selectedSat, onSatelliteSelect }) => 
                             `}
                             position={Cesium.Cartesian3.fromDegrees(lng, lat, (sat.geo_alt || 400) * 1000)}
                             point={{
-                                pixelSize: isSelected ? 18 : 10,
-                                color: isSelected ? Cesium.Color.YELLOW : Cesium.Color.CYAN,
+                                pixelSize: isSelected ? 18 : 12,
+                                color: satColor,
                                 outlineColor: isSelected ? Cesium.Color.WHITE : Cesium.Color.TRANSPARENT,
                                 outlineWidth: isSelected ? 2 : 0
                             }}

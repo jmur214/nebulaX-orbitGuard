@@ -5,12 +5,13 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: nebulax-db
+    profiles: ["core", "full", "red", "blue", "space", "target", "intel", "grc"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nebulax_secret}
       POSTGRES_DB: nebulax_core
     ports:
-      - "5432:5432" # Expose for local hybrid connection
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -24,8 +25,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: nebulax-bus
+    profiles: ["core", "full", "red", "blue", "space", "target", "intel", "grc"]
     ports:
-      - "6379:6379" # Expose for local hybrid connection
+      - "6379:6379"
     networks:
       - nebulax-net
 
@@ -33,6 +35,7 @@ services:
   core-api:
     build: ./services/core
     container_name: nebulax-core
+    profiles: ["core", "full", "red", "blue", "space", "target", "intel", "grc"]
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
@@ -47,30 +50,34 @@ services:
     networks:
       - nebulax-net
     volumes:
-      - ./services/core:/app # Hot Reload
+      - ./services/core:/app
 
   # --- VISUALIZATION ---
   dashboard:
     build: ./services/dashboard
     container_name: nebulax-dashboard-v2
+    profiles: ["core", "full"]
     command: npm run dev
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - WATCHPACK_POLLING=true # Fix for hot reload on some Macs
-#    volumes:
-#      - ./services/dashboard:/app
-#      - /app/node_modules # Prevent overwriting container deps
+      - WATCHPACK_POLLING=true
+      - NODE_OPTIONS=--max-old-space-size=2048
     networks:
       - nebulax-net
     depends_on:
       - core-api
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
   # --- SPACE PLUGINS ---
   space-tracker:
     build: ./services/space-guard/tracker
     container_name: nebulax-space-tracker
+    profiles: ["space", "full"]
     command: python -u main.py
     environment:
       - CORE_API_URL=http://nebulax-core:8000/events/ingest
@@ -88,6 +95,7 @@ services:
   ground-station:
     build: ./services/space-guard/ground-sim
     container_name: nebulax-ground-sim
+    profiles: ["space", "full"]
     ports:
       - "5001:5000"
     networks:
@@ -101,9 +109,12 @@ services:
   target-web:
     build: ./services/target/public-web
     container_name: nebulax-target-web
+    profiles: ["target", "red", "full"]
     command: python app.py
     ports:
       - "8080:5000"
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -117,7 +128,10 @@ services:
   blue-sentinel:
     build: ./services/blue-team/detection-engine
     container_name: nebulax-blue-sentinel
+    profiles: ["blue", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -134,9 +148,12 @@ services:
   honeypot:
     build: ./services/blue-team/honeypot-ssh
     container_name: nebulax-honeypot
+    profiles: ["blue", "red", "full"]
     command: python -u main.py
     ports:
       - "2222:2222"
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -149,6 +166,7 @@ services:
   net-watchdog:
     build: ./services/blue-team/net-watchdog
     container_name: nebulax-net-watchdog
+    profiles: ["blue", "full"]
     command: python -u main.py
     networks:
       - nebulax-net
@@ -166,6 +184,7 @@ services:
   net-forensics:
     build: ./services/blue-team/network-forensics
     container_name: nebulax-net-forensics
+    profiles: ["blue", "full"]
     command: python -u main.py
     networks:
       - nebulax-net
@@ -184,7 +203,10 @@ services:
   red-attacker:
     build: ./services/red-team/attack-engine
     container_name: nebulax-red-attacker
+    profiles: ["red", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     depends_on:
@@ -202,7 +224,10 @@ services:
   password-auditor:
     build: ./services/red-team/password-auditor
     container_name: nebulax-password-auditor
+    profiles: ["red", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -219,7 +244,10 @@ services:
   ransomware-sim:
     build: ./services/red-team/ransomware-sim
     container_name: nebulax-ransomware
+    profiles: ["red", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -236,7 +264,10 @@ services:
   vuln-scanner:
     build: ./services/red-team/vuln-scanner
     container_name: nebulax-vuln-scanner
+    profiles: ["red", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -253,7 +284,10 @@ services:
   c2-beacon:
     build: ./services/red-team/c2-beacon
     container_name: nebulax-c2-beacon
+    profiles: ["red", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -271,7 +305,10 @@ services:
   internal-infra:
     build: ./services/target/internal-infra
     container_name: nebulax-internal-infra
+    profiles: ["target", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -284,7 +321,10 @@ services:
   identity-manager:
     build: ./services/target/identity-manager
     container_name: nebulax-identity-manager
+    profiles: ["target", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -294,11 +334,13 @@ services:
     volumes:
       - ./services/target/identity-manager:/app
 
-  # --- BLUE TEAM (DEFENSE) ---
   ids-suricata:
     build: ./services/blue-team/ids-suricata
     container_name: nebulax-ids-suricata
+    profiles: ["blue", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -311,7 +353,10 @@ services:
   edr-agent:
     build: ./services/blue-team/edr-agent
     container_name: nebulax-edr-agent
+    profiles: ["blue", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -325,7 +370,10 @@ services:
   web-injector:
     build: ./services/red-team/web-injector
     container_name: nebulax-web-injector
+    profiles: ["red", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -338,7 +386,10 @@ services:
   apt-emulator:
     build: ./services/red-team/apt-emulator
     container_name: nebulax-apt-emulator
+    profiles: ["red", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -352,7 +403,10 @@ services:
   policy-mapper:
     build: ./services/grc/policy-mapper
     container_name: nebulax-policy-mapper
+    profiles: ["grc", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -365,7 +419,10 @@ services:
   incident-reporter:
     build: ./services/grc/incident-reporter
     container_name: nebulax-incident-reporter
+    profiles: ["grc", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -379,7 +436,10 @@ services:
   cve-feeder:
     build: ./services/intel/cve-feeder
     container_name: nebulax-cve-feeder
+    profiles: ["intel", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -392,7 +452,10 @@ services:
   ioc-manager:
     build: ./services/intel/ioc-manager
     container_name: nebulax-ioc-manager
+    profiles: ["intel", "full"]
     command: python -u main.py
+    environment:
+      - CORE_HOST=nebulax-core
     networks:
       - nebulax-net
     extra_hosts:
@@ -406,6 +469,7 @@ services:
   rf-receiver:
     build: ./services/space-guard/rf-receiver
     container_name: nebulax-rf-receiver
+    profiles: ["space", "full"]
     command: python -u main.py
     networks:
       - nebulax-net

@@ -13,7 +13,7 @@ print(" [ Target ] Internal Infrastructure Simulation Online")
 print(" [ Target ] Simulating SMB Shares and Active Directory...")
 
 def simulate_activity():
-    if random.random() < 0.3:
+    if random.random() < 0.6: # 60% chance (increased for visibility)
         event = {
             "event_meta": {
                 "event_type": "NETWORK_FLOW",

@@ -13,7 +13,7 @@ print(" [ GRC ] Incident Reporter Online")
 print(" [ GRC ] Generating PDF Reports...")
 
 def simulate_reporting():
-    if random.random() < 0.05:
+    if random.random() < 0.4: # 40% chance (increased for visibility)
         event = {
             "event_meta": {
                 "event_type": "INFO",
@@ -29,7 +29,7 @@ def simulate_reporting():
             }
         }
         try:
-            requests.post(CORE_API_URL, json=event, timeout=2)
+            requests.post(CORE_API_URL, json=event, timeout=10)
             print(" [ GRC ] Incident Report Generated")
         except Exception as e:
             print(f" [ GRC ] Error: {e}")

@@ -4,6 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from contextlib import asynccontextmanager
 import logging
+import redis.asyncio as redis
+import os
+import json
 
 # Import our internal modules
 from db.database import engine, Base, get_db
@@ -13,6 +16,10 @@ from schemas import UniversalEvent
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("NebulaX-Core")
+
+# Global Redis Client
+redis_client = None
+REDIS_URL = os.getenv("REDIS_URL", "redis://nebulax-bus:6379/0")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,8 +32,18 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
+    # Connect to Redis
+    global redis_client
+    redis_client = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
+    await redis_client.ping()
+    logger.info("NebulaX Core: Connected to Redis")
+
     logger.info("NebulaX Core: Database Connected & Tables Synced")
     yield
+    
+    # Shutdown
+    if redis_client:
+        await redis_client.close()
     logger.info("NebulaX Core: Shutting Down")
 
 app = FastAPI(title="NebulaX Core API", version="1.0.0", lifespan=lifespan)
@@ -87,8 +104,12 @@ async def calculate_game_state(db: AsyncSession):
     Calculates the current 'Wargame' score based on event history.
     This is a dynamic calculation for the prototype.
     """
-    # 1. Fetch all events (In prod, cache this or use aggregation queries)
-    result = await db.execute(select(EventModel))
+    # 1. Fetch recent events only (prevents timeout on large tables)
+    result = await db.execute(
+        select(EventModel)
+        .order_by(desc(EventModel.timestamp))
+        .limit(1000)
+    )
     events = result.scalars().all()
 
     red_score = 0
@@ -163,3 +184,90 @@ async def get_recent_events(
     except Exception as e:
         logger.error(f"Read Error: {e}")
         raise HTTPException(status_code=500, detail="Database Read Error")
+
+
+# --- ORBIT COMPUTATION (On-Demand) ---
+from orbit_computer import compute_orbit_path
+
+@app.get("/satellite/orbit")
+async def get_satellite_orbit(
+    sat_name: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Computes 90-minute orbit path for a satellite on-demand.
+    Uses TLE data from the most recent TLE_UPDATE event for this satellite.
+    """
+    try:
+        # 0. Check Cache First (Redis) - DISABLED FOR DEBUG
+        # cache_key = f"orbit:{sat_name}"
+        # if redis_client:
+        #     cached_path = await redis_client.get(cache_key)
+        #     if cached_path:
+        #         logger.info(f"Orbit Cache Hit for {sat_name}")
+        #         return {
+        #             "sat_name": sat_name,
+        #             "orbit_path": json.loads(cached_path),
+        #             "points": 45, # Approximate
+        #             "duration_minutes": 90,
+        #             "source": "cache"
+        #         }
+
+        # 1. Find most recent TLE_UPDATE for this satellite
+        query = select(EventModel).filter(
+            EventModel.event_type == "TLE_UPDATE",
+            EventModel.payload["sat_name"].astext == sat_name
+        ).order_by(desc(EventModel.timestamp)).limit(1)
+        
+        result = await db.execute(query)
+        event = result.scalar_one_or_none()
+        
+        if not event:
+            raise HTTPException(status_code=404, detail=f"No TLE data found for satellite: {sat_name}")
+        
+        # 2. Extract TLE from payload
+        payload = event.payload
+        tle = payload.get("tle", {})
+        line1 = tle.get("line1")
+        line2 = tle.get("line2")
+        
+        # Debug: Log which satellite's TLE we're using
+        payload_sat_name = payload.get("sat_name", "UNKNOWN")
+        norad_id = payload.get("norad_id", "UNKNOWN")
+        logger.info(f"Orbit Request: '{sat_name}' -> Found TLE for '{payload_sat_name}' (NORAD: {norad_id})")
+        logger.info(f"TLE Line1: {str(line1)[:30]}...")
+        
+        if not line1 or not line2 or line1 == "MISSING" or line2 == "MISSING":
+            logger.error(f"Invalid TLE for {sat_name}: {tle}")
+            raise HTTPException(status_code=400, detail="Invalid TLE data for satellite")
+        
+        # 3. Get the timestamp when this satellite's position was computed
+        # This ensures the orbit path starts from the displayed position
+        event_timestamp = event.timestamp
+        logger.info(f"Using event timestamp: {event_timestamp}")
+        
+        # 4. Compute orbit path starting from the event timestamp
+        orbit_path = compute_orbit_path(line1, line2, sat_name, start_time=event_timestamp)
+        
+        if not orbit_path:
+            raise HTTPException(status_code=500, detail="Failed to compute orbit path")
+        
+        logger.info(f"Computed orbit path for {sat_name}: {len(orbit_path)} points")
+        
+        # Cache Result (1 Hour TTL) - DISABLED FOR DEBUG
+        # if redis_client:
+        #     await redis_client.setex(cache_key, 3600, json.dumps(orbit_path))
+
+        return {
+            "sat_name": sat_name,
+            "orbit_path": orbit_path,
+            "points": len(orbit_path),
+            "duration_minutes": 90,
+            "source": "computed"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Orbit computation error: {e}")
+        raise HTTPException(status_code=500, detail="Orbit computation failed")

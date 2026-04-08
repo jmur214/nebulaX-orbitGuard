@@ -13,7 +13,7 @@ print(" [ GRC ] Policy Mapper Online")
 print(" [ GRC ] Mapping Alerts to Frameworks (GDPR, NIST, CFAA)...")
 
 def simulate_mapping():
-    if random.random() < 0.1:
+    if random.random() < 0.4: # 40% chance (increased for visibility)
         event = {
             "event_meta": {
                 "event_type": "INFO",
@@ -31,7 +31,7 @@ def simulate_mapping():
             }
         }
         try:
-            requests.post(CORE_API_URL, json=event, timeout=2)
+            requests.post(CORE_API_URL, json=event, timeout=10)
             print(" [ GRC ] Policy Violation Mapped")
         except Exception as e:
             print(f" [ GRC ] Error: {e}")

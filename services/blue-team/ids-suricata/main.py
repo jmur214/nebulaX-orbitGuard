@@ -21,7 +21,7 @@ ALERTS = [
 ]
 
 def check_traffic():
-    if random.random() < 0.1: # 10% chance of alert
+    if random.random() < 0.5: # 50% chance of alert (increased for visibility)
         alert = random.choice(ALERTS)
         event = {
             "event_meta": {

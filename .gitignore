@@ -14,13 +14,33 @@ npm-debug.log
 
 # Docker & Environment
 .env
+.env.*
 postgres_data/
 *.raw
 *.log
+logs/
 
-# IDEs
+# IDEs & Internal Context
 .vscode/
 .idea/
+.gemini/
+.claude/
+Context_docs/
+internal_notes/
+.agent/
+archive/
+reminders.md
+two.md
+
+# Test & Build Artifacts
+.pytest_cache/
+*.pytest_cache
+coverage/
+htmlcov/
+
+# ML Model Artifacts
+*.pkl
+*.joblib
 
 # Large Binary Files (Ephemeris)
 *.bsp

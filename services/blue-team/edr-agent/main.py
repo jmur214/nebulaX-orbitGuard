@@ -20,7 +20,7 @@ ALERTS = [
 ]
 
 def simulate_activity():
-    if random.random() < 0.15:
+    if random.random() < 0.5: # 50% chance (increased for visibility)
         alert = random.choice(ALERTS)
         event = {
             "event_meta": {

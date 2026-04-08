@@ -12,5 +12,8 @@ COPY . .
 # 3. Setup Cesium Assets
 RUN mkdir -p public/cesium && cp -r node_modules/cesium/Build/Cesium/* public/cesium/
 
-# 4. Start
+# 4. Pre-build for faster startup (optional - comment out for dev mode)
+# RUN npm run build
+
+# 5. Start (use dev for hot reload, start for production)
 CMD ["npm", "run", "dev"]

@@ -13,7 +13,7 @@ print(" [ Intel ] IOC Manager Online")
 print(" [ Intel ] Syncing 'Known Bad' IP/Hash List...")
 
 def simulate_sync():
-    if random.random() < 0.1:
+    if random.random() < 0.4: # 40% chance (increased for visibility)
         event = {
             "event_meta": {
                 "event_type": "INFO",
@@ -29,7 +29,7 @@ def simulate_sync():
             }
         }
         try:
-            requests.post(CORE_API_URL, json=event, timeout=2)
+            requests.post(CORE_API_URL, json=event, timeout=10)
             print(" [ Intel ] IOC List Synced")
         except Exception as e:
             print(f" [ Intel ] Error: {e}")

@@ -4,20 +4,16 @@ import schedule
 import paramiko
 import random
 import socket
+import os
 
 # CONFIGURATION
-# Targets
-# CONFIGURATION
+CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
+CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
+
 # Targets
 WEB_TARGET = os.getenv("WEB_TARGET", "http://nebulax-target-web:5000")
 SSH_TARGET = os.getenv("SSH_TARGET", "nebulax-honeypot")
 SSH_PORT = int(os.getenv("SSH_PORT", "2222"))
-
-import os
-
-# Reporting
-CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")
-CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 
 # Wordlists
 USERS = ["admin", "root", "user", "guest", "support"]
@@ -43,7 +39,7 @@ def report_event(event_type, severity, details, target):
         }
     }
     try:
-        requests.post(CORE_API_URL, json=event, timeout=1)
+        requests.post(CORE_API_URL, json=event, timeout=2)
     except:
         pass
 
@@ -76,7 +72,6 @@ def attack_ssh():
         client.close()
     except Exception as e:
         # This is EXPECTED. We want to fail so the honeypot logs the failure.
-        # print(f" [-] SSH Failed (Good): {e}")
         pass
 
 def attack_web():
