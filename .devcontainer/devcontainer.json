@@ -7,11 +7,15 @@
   "image": "mcr.microsoft.com/devcontainers/javascript-node:18-bookworm",
 
   // Docker-in-Docker so `docker compose` works for the project's 27 services.
+  // sshd so `gh codespace ssh` can connect for remote debugging from a laptop.
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
       "moby": true,
       "dockerDashComposeVersion": "v2"
+    },
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest"
     }
   },
 
