@@ -3,9 +3,12 @@
 # INCREMENTAL SPACE - SPACE DOMAIN ONLY
 # Uses safer cleanup strategy to preserve build cache.
 
-# 1. Build and Run Space Domain
+# 0. Ensure shared Python base image exists (no-op if already built).
+"$(dirname "$0")/scripts/build_base.sh"
+
+# 1. Build and Run Space Domain (using the lighter "minimal" profile by default).
 echo "🚀 [INCREMENTAL SPACE] Building NebulaX Space System..."
-docker compose --profile core --profile space up --build
+docker compose --profile minimal up --build
 
 # --- The script pauses here while you test ---
 # --- It resumes when you press Ctrl+C ---

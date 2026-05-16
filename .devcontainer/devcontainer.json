@@ -1,0 +1,62 @@
+{
+  "name": "NebulaX / OrbitGuard",
+  "image": "mcr.microsoft.com/devcontainers/universal:2-linux",
+
+  // Docker-in-Docker so `docker compose` works for the project's 27 services.
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18"
+    }
+  },
+
+  // Forward the ports the project uses; auto-open the dashboard when ready.
+  "forwardPorts": [3000, 8000, 5001, 8080, 2222],
+  "portsAttributes": {
+    "3000": { "label": "Dashboard (Next.js)", "onAutoForward": "openBrowser" },
+    "8000": { "label": "Core API (FastAPI)", "onAutoForward": "silent" },
+    "5001": { "label": "Vulnerable Ground Station" },
+    "8080": { "label": "Vulnerable Web Target" },
+    "2222": { "label": "SSH Honeypot" }
+  },
+
+  // Ask Codespaces to give us the bigger machine. Cesium needs RAM.
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+
+  // Wire NEXT_PUBLIC_API_HOST to the codespace's public URL for port 8000 so
+  // the browser can reach the core API across the public *.app.github.dev domain.
+  // CODESPACE_NAME and GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN are auto-injected
+  // by the Codespaces runtime.
+  "remoteEnv": {
+    "NEXT_PUBLIC_API_HOST": "https://${localEnv:CODESPACE_NAME}-8000.${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}",
+    "CORS_ORIGINS": "https://${localEnv:CODESPACE_NAME}-3000.${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+  },
+
+  // One-time setup: build shared base, install dashboard deps.
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  // Every time the codespace starts (boot or resume), make sure the backend is up.
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "ms-python.python",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}

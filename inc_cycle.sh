@@ -3,6 +3,9 @@
 # INCREMENTAL CYCLE - FULL SYSTEM
 # Uses safer cleanup strategy to preserve build cache while preventing disk fill-up.
 
+# 0. Ensure shared Python base image exists (no-op if already built).
+"$(dirname "$0")/scripts/build_base.sh"
+
 # 1. Build and Run Full System
 echo "🚀 [INCREMENTAL CYCLE] Building NebulaX Ecosystem (Full)..."
 docker compose --profile full up --build

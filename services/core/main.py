@@ -1,15 +1,16 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, text
 from contextlib import asynccontextmanager
+import asyncio
 import logging
 import redis.asyncio as redis
 import os
 import json
 
 # Import our internal modules
-from db.database import engine, Base, get_db
+from db.database import engine, Base, get_db, AsyncSessionLocal
 from db.models import EventModel
 from schemas import UniversalEvent
 
@@ -21,17 +22,45 @@ logger = logging.getLogger("NebulaX-Core")
 redis_client = None
 REDIS_URL = os.getenv("REDIS_URL", "redis://nebulax-bus:6379/0")
 
+# Event retention: delete events older than EVENT_RETENTION_DAYS every 6 hours.
+# Set EVENT_RETENTION_DAYS=0 to disable cleanup entirely (unbounded growth, original behavior).
+EVENT_RETENTION_DAYS = int(os.getenv("EVENT_RETENTION_DAYS", "7"))
+RETENTION_LOOP_SECONDS = 6 * 60 * 60  # 6 hours
+
+
+async def retention_loop():
+    """Background task: prune old events on a schedule."""
+    if EVENT_RETENTION_DAYS <= 0:
+        logger.info("Event retention disabled (EVENT_RETENTION_DAYS=0).")
+        return
+    logger.info(f"Event retention enabled: keeping last {EVENT_RETENTION_DAYS} days.")
+    while True:
+        try:
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    text(f"DELETE FROM events WHERE timestamp < NOW() - INTERVAL '{EVENT_RETENTION_DAYS} days'")
+                )
+                await session.commit()
+                deleted = result.rowcount or 0
+                if deleted:
+                    logger.info(f"Retention sweep: deleted {deleted} events older than {EVENT_RETENTION_DAYS} days.")
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.warning(f"Retention sweep failed (will retry): {e}")
+        await asyncio.sleep(RETENTION_LOOP_SECONDS)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifecycle Manager:
-    1. On Startup: Connect to DB and create tables.
-    2. On Shutdown: Close connections.
+    1. On Startup: Connect to DB, create tables, start background retention task.
+    2. On Shutdown: Cancel retention task and close connections.
     """
     # Create Tables (In production, use Alembic, but this is fine for MVP)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     # Connect to Redis
     global redis_client
     redis_client = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
@@ -39,20 +68,33 @@ async def lifespan(app: FastAPI):
     logger.info("NebulaX Core: Connected to Redis")
 
     logger.info("NebulaX Core: Database Connected & Tables Synced")
+
+    # Start event-retention background task
+    retention_task = asyncio.create_task(retention_loop())
+
     yield
-    
+
     # Shutdown
+    retention_task.cancel()
+    try:
+        await retention_task
+    except asyncio.CancelledError:
+        pass
     if redis_client:
         await redis_client.close()
     logger.info("NebulaX Core: Shutting Down")
 
 app = FastAPI(title="NebulaX Core API", version="1.0.0", lifespan=lifespan)
 
-# --- CRITICAL: CORS MIDDLEWARE ---
-# This allows your Dashboard (running on localhost:3000) to talk to this API
+# --- CORS MIDDLEWARE ---
+# Default is the local dashboard origin only. Override with CORS_ORIGINS as a
+# comma-separated list, e.g. CORS_ORIGINS="http://localhost:3000,https://demo.example.com".
+# Use CORS_ORIGINS="*" to allow all (lab-only).
+_cors_env = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+CORS_ORIGINS = ["*"] if _cors_env.strip() == "*" else [o.strip() for o in _cors_env.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, lock this to ["http://localhost:3000"]
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -199,19 +241,22 @@ async def get_satellite_orbit(
     Uses TLE data from the most recent TLE_UPDATE event for this satellite.
     """
     try:
-        # 0. Check Cache First (Redis) - DISABLED FOR DEBUG
-        # cache_key = f"orbit:{sat_name}"
-        # if redis_client:
-        #     cached_path = await redis_client.get(cache_key)
-        #     if cached_path:
-        #         logger.info(f"Orbit Cache Hit for {sat_name}")
-        #         return {
-        #             "sat_name": sat_name,
-        #             "orbit_path": json.loads(cached_path),
-        #             "points": 45, # Approximate
-        #             "duration_minutes": 90,
-        #             "source": "cache"
-        #         }
+        # 0. Check Cache First (Redis). 1-hour TTL keyed by sat name.
+        cache_key = f"orbit:{sat_name}"
+        if redis_client:
+            cached_path = await redis_client.get(cache_key)
+            if cached_path:
+                path = json.loads(cached_path)
+                logger.info(f"Orbit cache HIT  {sat_name} ({len(path)} pts)")
+                return {
+                    "sat_name": sat_name,
+                    "orbit_path": path,
+                    "points": len(path),
+                    "duration_minutes": 90,
+                    "source": "cache"
+                }
+            else:
+                logger.info(f"Orbit cache MISS {sat_name}")
 
         # 1. Find most recent TLE_UPDATE for this satellite
         query = select(EventModel).filter(
@@ -253,10 +298,13 @@ async def get_satellite_orbit(
             raise HTTPException(status_code=500, detail="Failed to compute orbit path")
         
         logger.info(f"Computed orbit path for {sat_name}: {len(orbit_path)} points")
-        
-        # Cache Result (1 Hour TTL) - DISABLED FOR DEBUG
-        # if redis_client:
-        #     await redis_client.setex(cache_key, 3600, json.dumps(orbit_path))
+
+        # Cache Result (1 Hour TTL).
+        if redis_client:
+            try:
+                await redis_client.setex(cache_key, 3600, json.dumps(orbit_path))
+            except Exception as cache_err:
+                logger.warning(f"Orbit cache write failed for {sat_name}: {cache_err}")
 
         return {
             "sat_name": sat_name,

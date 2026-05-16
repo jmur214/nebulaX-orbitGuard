@@ -1,12 +1,9 @@
-FROM python:3.10-slim-bookworm
-
+FROM nebulax-python-base:latest
 WORKDIR /app
-
-# Install Nmap binary
-RUN apt-get update && apt-get install -y nmap && rm -rf /var/lib/apt/lists/*
-
+# nmap binary is service-specific; not worth baking into the shared base.
+RUN apt-get update && apt-get install -y --no-install-recommends nmap \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
-RUN pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
-
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 CMD ["python", "-u", "main.py"]

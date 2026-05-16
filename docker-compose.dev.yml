@@ -1,0 +1,24 @@
+# Dev-mode overrides.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Swaps the dashboard service to use the dev Dockerfile (npm run dev + hot reload)
+# and mounts the source tree so file edits trigger Next.js recompiles inside the
+# container. This is the "old default" preserved as an opt-in.
+#
+# For the fastest iteration loop, prefer running the dashboard on the host
+# via ./dev.sh — that's still ~17x faster than Docker dev mode.
+
+services:
+  dashboard:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile.dev
+    command: npm run dev
+    volumes:
+      - ./services/dashboard:/app
+      - /app/node_modules     # anonymous volume so the host's node_modules doesn't shadow the image's
+      - /app/.next            # likewise for .next build cache
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true

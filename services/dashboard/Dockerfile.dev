@@ -1,0 +1,17 @@
+# Dev-mode dashboard image — preserves the pre-A3 behavior:
+# single stage, source volume-mounted from the host, `npm run dev` for hot reload.
+# Used via docker-compose.dev.yml override.
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --no-audit --no-fund
+
+COPY . .
+
+# Cesium static assets need to be in /public so the browser can fetch them.
+RUN mkdir -p public/cesium && cp -r node_modules/cesium/Build/Cesium/* public/cesium/
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

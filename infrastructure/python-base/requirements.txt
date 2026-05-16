@@ -1,0 +1,14 @@
+# Cross-service common pip dependencies for NebulaX.
+# Anything here is pre-installed in nebulax-python-base; per-service
+# requirements.txt files keep their full lists so a service can opt out
+# without breaking. pip will skip already-installed versions.
+requests==2.31.0
+schedule==1.2.1
+paramiko==3.4.0
+flask==3.0.0
+pyjwt==2.8.0
+faker==23.0.0
+fpdf==1.7.2
+python-nmap==0.7.1
+redis==5.0.1
+pydantic==2.6.0

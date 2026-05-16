@@ -2,7 +2,10 @@
 const path = require('path');
 
 const nextConfig = {
-    reactStrictMode: false, // DISABLED - testing if double-mount breaks Cesium
+    // Cesium's Viewer attaches a global WebGL context and cannot survive React 18's
+    // StrictMode double-invoke pattern. Keep this OFF unless you're prepared to rebuild
+    // SatelliteGlobe.js around the `done.current` guard in its Setup component.
+    reactStrictMode: false,
     transpilePackages: ['resium'],
     webpack: (config, { webpack }) => {
         config.plugins.push(

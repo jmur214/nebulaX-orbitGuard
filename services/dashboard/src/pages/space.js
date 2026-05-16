@@ -17,6 +17,7 @@ export default function SpaceCommand() {
     const [selectedSatName, setSelectedSatName] = useState(null); // NULL = Monitor Mode (View All)
     const [filterCountry, setFilterCountry] = useState("ALL");
     const [orbitPath, setOrbitPath] = useState(null); // On-demand orbit path
+    const [orbitError, setOrbitError] = useState(null); // Per-satellite orbit fetch failure
 
     // ERROR DISPLAY
     const [lastError, setLastError] = useState(null);
@@ -46,11 +47,6 @@ export default function SpaceCommand() {
                 const newSatellites = {};
                 let latestFingerprint = null;
 
-                // DEBUG: Inject Fake Sat if empty
-                if (!response.data || response.data.length === 0) {
-                    console.warn("DEBUG: API returned data but it was empty.");
-                }
-
                 for (const event of response.data) {
                     if (event.origin_module === 'space.tracker') {
                         if (event.event_type === 'TLE_UPDATE') {
@@ -64,29 +60,21 @@ export default function SpaceCommand() {
                     }
                 }
 
-                setSatellites(prev => ({ ...prev, ...newSatellites }));
+                // Replace (don't merge) so satellites the tracker stops emitting drop out.
+                // Merging caused stale "ghost" satellites whose orbit fetch would 404.
+                setSatellites(newSatellites);
                 if (latestFingerprint) setFingerprint(latestFingerprint);
                 setLastError(null);
 
             } catch (error) {
                 console.error("Connection Error:", error);
                 setLastError(error.message);
-
-                // FALLBACK DEBUG DATA
-                setSatellites(prev => ({
-                    ...prev,
-                    "DEBUG-SAT-1": {
-                        sat_name: "DEBUG-SAT-1",
-                        tle: { line1: "1 25544U 98067A   98264.51782528 -.00002182  00000-0 -11606-4 0  2927", line2: "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72775361250273" },
-                        azimuth: 0, elevation: 0, distance_km: 400,
-                        origin_prediction: { country: "DEBUG_LAND", confidence: 1.0 }
-                    }
-                }));
+                // On error, leave satellites as-is; the red error banner surfaces the failure.
             }
         };
 
         fetchData();
-        const interval = setInterval(fetchData, 2000);
+        const interval = setInterval(fetchData, 5000);
         return () => clearInterval(interval);
     }, []);
 
@@ -109,11 +97,20 @@ export default function SpaceCommand() {
         if (!sat) {
             setSelectedSatName(null);
             setOrbitPath(null);
+            setOrbitError(null);
             return;
         }
 
         setSelectedSatName(sat.sat_name);
         setOrbitPath(null); // Clear previous
+        setOrbitError(null);
+
+        // Skip orbit fetch if TLE is known-missing (the API would 404 anyway).
+        const tleLine1 = sat.tle?.line1;
+        if (!tleLine1 || tleLine1 === "MISSING") {
+            setOrbitError("No TLE data on file for this satellite");
+            return;
+        }
 
         // Fetch orbit path on-demand
         try {
@@ -122,7 +119,11 @@ export default function SpaceCommand() {
             setOrbitPath(response.data.orbit_path);
             console.log(`Fetched orbit for ${sat.sat_name}: ${response.data.points} points`);
         } catch (error) {
-            console.warn(`Could not fetch orbit for ${sat.sat_name}:`, error.message);
+            if (error.response?.status === 404) {
+                setOrbitError("No recent TLE for this satellite");
+            } else {
+                setOrbitError(`Orbit fetch failed: ${error.message}`);
+            }
             setOrbitPath(null);
         }
     };
@@ -131,10 +132,10 @@ export default function SpaceCommand() {
         <div className="min-h-screen bg-slate-950 text-emerald-400 font-mono p-6 selection:bg-emerald-900 selection:text-white">
             <WarHeader title="ORBITGUARD" subtitle="SPACE COMMAND" />
 
-            {/* DEBUG ERROR BANNER */}
+            {/* TELEMETRY LINK ERROR BANNER */}
             {lastError && (
                 <div className="bg-red-900/80 text-white p-4 mb-4 border border-red-500 font-bold animate-pulse text-center">
-                    ⚠ SYSTEM ALERT: TELEMETRY LINK FAILURE ({lastError}) - USING FALLBACK DATA
+                    ⚠ TELEMETRY LINK FAILURE ({lastError}) — RETRYING
                 </div>
             )}
 
@@ -203,6 +204,17 @@ export default function SpaceCommand() {
                                         <div className="text-[10px] text-emerald-500 font-bold border-l border-slate-700 pl-3">
                                             ✔ VERIFIED: {selectedSat.verified_metadata?.country || "UNK"}
                                         </div>
+                                    </div>
+
+                                    {/* ORBIT PATH STATUS */}
+                                    <div className="mt-2 text-[10px] font-bold">
+                                        {orbitError ? (
+                                            <span className="text-amber-500">⚠ ORBIT: {orbitError}</span>
+                                        ) : orbitPath ? (
+                                            <span className="text-cyan-400">◉ ORBIT PATH LOADED ({orbitPath.length} points)</span>
+                                        ) : (
+                                            <span className="text-slate-500">◌ ORBIT: computing…</span>
+                                        )}
                                     </div>
 
                                 </div>

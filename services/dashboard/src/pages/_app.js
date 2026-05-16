@@ -12,8 +12,10 @@ if (typeof window !== 'undefined') {
   // This must happen synchronously before any Viewer is created
   const Cesium = require('cesium');
 
-  // Set your personal Cesium Ion access token
-  Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5MzNlOWUyMS0wNjJkLTRjNDktYmViNy1hZDg1MzEzMDAyYTkiLCJpZCI6Mzc5NTQ2LCJpYXQiOjE3Njg1NDgwODd9.80xIDuR1RDjlanpuPp7inELKaHyUnF302Jg4wfN8ne0';
+  // Prefer NEXT_PUBLIC_CESIUM_ION_TOKEN from env; fall back to the bundled local-dev token.
+  // Document this in docs/DEVELOPMENT.md so users know how to override.
+  Cesium.Ion.defaultAccessToken = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN
+    || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5MzNlOWUyMS0wNjJkLTRjNDktYmViNy1hZDg1MzEzMDAyYTkiLCJpZCI6Mzc5NTQ2LCJpYXQiOjE3Njg1NDgwODd9.80xIDuR1RDjlanpuPp7inELKaHyUnF302Jg4wfN8ne0';
 
   console.log("=== _app.js: Cesium configured ===");
   console.log("CESIUM_BASE_URL:", window.CESIUM_BASE_URL);

@@ -14,21 +14,28 @@ class EventSeverity(str, Enum):
 class EventType(str, Enum):
     # Core
     SYSTEM_STARTUP = "SYSTEM_STARTUP"
+    INFO = "INFO"
     # Space
     TLE_UPDATE = "TLE_UPDATE"
     SATELLITE_PASS = "SATELLITE_PASS"
     RF_SIGNAL_CAPTURED = "RF_SIGNAL_CAPTURED"
+    FINGERPRINT_UPDATE = "FINGERPRINT_UPDATE"
     # Cyber
     SSH_AUTH_FAIL = "AUTH_FAILURE" # Standardized name
     AUTH_FAILURE = "AUTH_FAILURE"   # Alias for flexibility
+    AUTH_SUCCESS = "AUTH_SUCCESS"
     EXPLOIT_SUCCESS = "EXPLOIT_SUCCESS"
-    # Blue Team (NEW)
+    # Blue Team
     THREAT_DETECTED = "THREAT_DETECTED"
     COMMAND_EXECUTED = "COMMAND_EXECUTED"
     WEB_TRAFFIC = "WEB_TRAFFIC"
     CREDENTIAL_CRACKED = "CREDENTIAL_CRACKED"
     VULN_REPORT = "VULN_REPORT"
     NETWORK_FLOW = "NETWORK_FLOW"
+    FORENSIC_CASE = "FORENSIC_CASE"
+    # Red Team
+    FILE_ENCRYPTED = "FILE_ENCRYPTED"
+    RANSOM_NOTE = "RANSOM_NOTE"
 
 class EventMeta(BaseModel):
     id: UUID4 = Field(default_factory=uuid.uuid4)

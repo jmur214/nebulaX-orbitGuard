@@ -19,8 +19,9 @@ CORE_API_URL = f"http://{CORE_HOST}:8000/events/ingest"
 GROUND_STATION = Topos('41.8952 N', '87.8257 W')
 
 # SPACE-TRACK CREDENTIALS
-ST_USER = os.getenv("ST_USER")
-ST_PASS = os.getenv("ST_PASS")
+# Documented name is SPACETRACK_USER/SPACETRACK_PASS; ST_USER/ST_PASS kept as legacy alias.
+ST_USER = os.getenv("SPACETRACK_USER") or os.getenv("ST_USER")
+ST_PASS = os.getenv("SPACETRACK_PASS") or os.getenv("ST_PASS")
 ST_BASE = "https://www.space-track.org"
 
 print(" [ OrbitGuard ] Satellite Tracking System Online...")
@@ -133,7 +134,9 @@ active_sats = fetch_spacetrack_tles()
 if not active_sats:
     print("[!] SpaceTrack TLE Fetch Failed. Falling back to Celestrak...")
     try:
-        url = 'https://celestrak.org/NORAD/elements/stations.txt'
+        # The old stations.txt URL now redirects to a CSV-by-default endpoint that breaks
+        # the 3-line parser. Use the canonical gp.php endpoint with FORMAT=tle explicitly.
+        url = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle'
         resp = requests.get(url)
         lines = resp.text.strip().splitlines()
         
@@ -471,7 +474,7 @@ def telemetry_cycle():
                 requests.post(CORE_API_URL, json=event)
                 
             except Exception as e_inner:
-                # print(f"[!] Error processing {name}: {e_inner}")
+                print(f"[!] Error processing {name}: {type(e_inner).__name__}: {e_inner}", flush=True)
                 continue
         
         print(f"[*] Cycle complete. Telemetry sent for {len(satellites)} satellites.")

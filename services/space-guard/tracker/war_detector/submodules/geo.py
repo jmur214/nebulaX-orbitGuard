@@ -21,10 +21,10 @@ class GEOSentinel:
                         # Not necessarily hostile, but interesting
                         pass
                         
-                    # Real "War" metric: Is it drifting aggressively near other slots?
-                    # This requires tracking longitude over time. 
-                    # For now, we simulate a "Drift Alert" for specific demo satellites
-                    if "LUCH" in name or "OLYMP" in name: # Known Russian Inspector sats
+                    # KNOWN LIMITATION: real GEO drift detection requires tracking longitude
+                    # across cycles. For now this just flags known Russian inspector sats by
+                    # name (LUCH, OLYMP). True drift tracking is on docs/ROADMAP.md.
+                    if "LUCH" in name or "OLYMP" in name:
                         alerts.append(f"GEO SENTINEL: Inspector {name} Active in Belt")
                         score += 10
 

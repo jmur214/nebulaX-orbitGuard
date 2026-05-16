@@ -1,3 +1,15 @@
+> **⚠ FROZEN SNAPSHOT — DO NOT EDIT.**
+>
+> This directory is a deliberately frozen Dec 5, 2025 snapshot used for AI-agent
+> context-loading. The content below reflects the project as of that date and is
+> intentionally NOT kept in sync with reality.
+>
+> For current documentation see [`../docs/`](../docs/). For current status see
+> [`../docs/STATUS.md`](../docs/STATUS.md). For the project map see
+> [`../docs/PROJECT_MAP.md`](../docs/PROJECT_MAP.md).
+
+---
+
 Readme 
 # 🌌 NebulaX // Cyber-Physical Fusion Center
 
