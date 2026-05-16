@@ -40,8 +40,7 @@ export default function SpaceCommand() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const API_HOST = process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:8000';
-                const response = await axios.get(`${API_HOST}/events/recent?limit=200&team=space`);
+                const response = await axios.get(`/api/proxy/events/recent?limit=200&team=space`);
                 setEvents(response.data);
 
                 const newSatellites = {};
@@ -114,8 +113,7 @@ export default function SpaceCommand() {
 
         // Fetch orbit path on-demand
         try {
-            const API_HOST = process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:8000';
-            const response = await axios.get(`${API_HOST}/satellite/orbit?sat_name=${encodeURIComponent(sat.sat_name)}`);
+            const response = await axios.get(`/api/proxy/satellite/orbit?sat_name=${encodeURIComponent(sat.sat_name)}`);
             setOrbitPath(response.data.orbit_path);
             console.log(`Fetched orbit for ${sat.sat_name}: ${response.data.points} points`);
         } catch (error) {

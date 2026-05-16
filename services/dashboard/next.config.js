@@ -7,6 +7,20 @@ const nextConfig = {
     // SatelliteGlobe.js around the `done.current` guard in its Setup component.
     reactStrictMode: false,
     transpilePackages: ['resium'],
+
+    // Proxy /api/proxy/* through Next.js to the core API. This means the browser
+    // only ever talks to the same origin (port 3000), avoiding CORS and the
+    // Codespaces "private port forward auth-bounce" problem entirely. Set
+    // CORE_API_INTERNAL to override the upstream (default localhost:8000 works
+    // for both ./dev.sh and Codespaces — the codespace VM has the docker-compose
+    // 8000:8000 host mapping).
+    async rewrites() {
+        const upstream = process.env.CORE_API_INTERNAL || 'http://localhost:8000';
+        return [
+            { source: '/api/proxy/:path*', destination: `${upstream}/:path*` },
+        ];
+    },
+
     webpack: (config, { webpack }) => {
         config.plugins.push(
             new webpack.DefinePlugin({

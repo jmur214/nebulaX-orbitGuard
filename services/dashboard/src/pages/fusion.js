@@ -23,14 +23,12 @@ export default function FusionCenter() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const API_HOST = process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:8000';
-
                 // 1. Fetch Log Events (Exclude high-frequency TLE noise)
-                const logResponse = await axios.get(`${API_HOST}/events/recent?limit=100&exclude_type=TLE_UPDATE`);
+                const logResponse = await axios.get(`/api/proxy/events/recent?limit=100&exclude_type=TLE_UPDATE`);
                 setEvents(logResponse.data);
 
                 // 2. Fetch Space Telemetry (Limit 200 to capture all 70+ sats)
-                const spaceResponse = await axios.get(`${API_HOST}/events/recent?limit=200&team=space`);
+                const spaceResponse = await axios.get(`/api/proxy/events/recent?limit=200&team=space`);
 
                 // Process unique satellites
                 const uniqueSats = {};

@@ -20,6 +20,15 @@ echo "==> Installing dashboard node_modules..."
 ( cd services/dashboard && npm install --no-audit --no-fund )
 
 echo ""
+echo "==> Copying Cesium static assets to dashboard/public/cesium..."
+# Cesium needs its Workers/Assets/Widgets folder served at /cesium for the
+# globe to render anything beyond a blue sphere. The Dockerfile does this
+# at build time, but in Codespaces we run npm directly, so do it here.
+( cd services/dashboard \
+  && mkdir -p public/cesium \
+  && cp -r node_modules/cesium/Build/Cesium/* public/cesium/ )
+
+echo ""
 echo "==> Pre-pulling postgres + redis images..."
 docker pull postgres:15-alpine
 docker pull redis:7-alpine

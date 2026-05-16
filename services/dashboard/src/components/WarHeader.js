@@ -12,8 +12,9 @@ export default function WarHeader({ title, subtitle }) {
     useEffect(() => {
         const fetchState = async () => {
             try {
-                const API_HOST = process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:8000';
-                const response = await axios.get(`${API_HOST}/game/state`);
+                // Same-origin via Next.js rewrite (see next.config.js rewrites()).
+                // Avoids CORS / cross-port-forwarding issues in Codespaces.
+                const response = await axios.get(`/api/proxy/game/state`);
                 setGameState(response.data);
             } catch (error) {
                 console.error("Game State Error:", error);

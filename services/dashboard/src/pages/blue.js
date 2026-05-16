@@ -10,8 +10,7 @@ export default function BlueTeam() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const API_HOST = process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:8000';
-                const response = await axios.get(`${API_HOST}/events/recent?limit=50&team=blue`);
+                const response = await axios.get(`/api/proxy/events/recent?limit=50&team=blue`);
                 setEvents(response.data);
             } catch (error) {
                 console.error("Connection Error:", error);
