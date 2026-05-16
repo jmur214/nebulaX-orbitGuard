@@ -41,16 +41,10 @@ const Setup = () => {
 
         console.log(">>> Setup: Configuring viewer");
 
-        // Remove default imagery and add OSM
-        while (viewer.imageryLayers.length > 0) {
-            viewer.imageryLayers.remove(viewer.imageryLayers.get(0));
-        }
-        viewer.imageryLayers.addImageryProvider(
-            new Cesium.OpenStreetMapImageryProvider({
-                url: 'https://tile.openstreetmap.org/'
-            })
-        );
-        console.log(">>> OSM added");
+        // Use Cesium's default Ion-backed imagery (Bing). The Ion token is set
+        // in _app.js. Don't override with raw OpenStreetMap tiles — OSM's tile
+        // usage policy blocks shared-infra hosts (Codespaces *.app.github.dev,
+        // many cloud IPs) which manifests as "blocked by usage policy".
 
         // Set a nice initial camera view
         viewer.camera.setView({

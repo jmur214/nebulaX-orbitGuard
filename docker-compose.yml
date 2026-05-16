@@ -42,6 +42,10 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:nebulax_secret@nebulax-db:5432/nebulax_core
       - REDIS_URL=redis://nebulax-bus:6379/0
+      # Pass through host-shell env so Codespaces' auto-set CORS_ORIGINS reaches the container.
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - EVENT_RETENTION_DAYS=${EVENT_RETENTION_DAYS:-7}
+      - SQL_ECHO=${SQL_ECHO:-false}
     depends_on:
       postgres:
         condition: service_healthy
