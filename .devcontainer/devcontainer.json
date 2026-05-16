@@ -1,6 +1,10 @@
 {
   "name": "NebulaX / OrbitGuard",
-  "image": "mcr.microsoft.com/devcontainers/universal:2-linux",
+
+  // Debian 12 base with Node 18 already installed. Smaller (~1.5 GB vs ~10 GB)
+  // and avoids the stale Yarn apt repo in mcr.microsoft.com/devcontainers/universal:2-linux
+  // that breaks Docker-in-Docker install (NO_PUBKEY 62D54FD4003F6525).
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:18-bookworm",
 
   // Docker-in-Docker so `docker compose` works for the project's 27 services.
   "features": {
@@ -8,9 +12,6 @@
       "version": "latest",
       "moby": true,
       "dockerDashComposeVersion": "v2"
-    },
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "18"
     }
   },
 
@@ -31,10 +32,9 @@
     "storage": "32gb"
   },
 
-  // Wire NEXT_PUBLIC_API_HOST to the codespace's public URL for port 8000 so
-  // the browser can reach the core API across the public *.app.github.dev domain.
-  // CODESPACE_NAME and GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN are auto-injected
-  // by the Codespaces runtime.
+  // Wire NEXT_PUBLIC_API_HOST + CORS_ORIGINS to the codespace's public URLs so
+  // browser fetches across *.app.github.dev work. CODESPACE_NAME and
+  // GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN are auto-injected by the runtime.
   "remoteEnv": {
     "NEXT_PUBLIC_API_HOST": "https://${localEnv:CODESPACE_NAME}-8000.${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}",
     "CORS_ORIGINS": "https://${localEnv:CODESPACE_NAME}-3000.${localEnv:GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
