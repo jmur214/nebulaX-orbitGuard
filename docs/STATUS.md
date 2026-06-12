@@ -2,7 +2,7 @@
 
 > [← docs index](README.md)
 >
-> **Last updated:** 2026-05-16
+> **Last updated:** 2026-06-12
 
 This is the first doc to read when you (or anyone) opens the project cold. Keep it short and current. When something material changes, edit this file and append to [../CHANGELOG.md](../CHANGELOG.md).
 
@@ -19,14 +19,25 @@ Recent overhaul (2026-05-15/16) reduced the resource footprint and fixed the lon
 | Workstream B — 3D globe fix | ✅ Done 2026-05-16 | space.js state merge replaced with replace; DEBUG-SAT-1 fallback removed; orbit error UI added |
 | Workstream D — small bug polish | ✅ Done 2026-05-16 | EventType enum gap, ST_USER alias, Redis cache, SQL echo, CORS, GEOSentinel comment |
 | Workstream A — resource overhaul | ✅ Done 2026-05-16 | Shared Python base + 24 Dockerfiles migrated; dashboard multi-stage; `minimal` profile; event retention; `.dockerignore` everywhere; `dev.sh` is canonical |
-| Workstream C — documentation system | 🟡 In progress | This doc system being built now |
-| de421.bsp dedup (A6) | ⏸ Awaiting user OK | Root copies are unreferenced but not yet deleted; `.gitignore` already covers `*.bsp` |
-| Archive old root NebulaX_*.md docs | ⏸ Awaiting user OK | The Dec 2025 docs are stale but will be moved to `archive/2025-12/` only after explicit go-ahead |
+| Workstream C — documentation system | ✅ Done 2026-06-12 | Doc system in place; stale root docs archived; `docs/` is canonical |
+| de421.bsp dedup (A6) | ✅ Done 2026-06-12 | Unused root `de421.bsp` + `.download` removed (tracker keeps its own copy); Cesium dist untracked (regenerated at build) |
+| Archive old root NebulaX_*.md docs | ✅ Done 2026-06-12 | Moved to tracked `archive/2025-12/` with an index README; `docs/` is now the single canonical set |
+
+### Project overhaul (in progress)
+
+| Phase | Status | Notes |
+|---|---|---|
+| Phase 0 — repo hygiene + doc consolidation | ✅ Done 2026-06-12 | ~35 MB of bloat untracked (de421 dupes, Cesium dist); stale root docs archived |
+| Phase 1 — engineering foundation | ⏳ Next | CI (GitHub Actions), pytest suite for core-api + key services, pinned deps, Alembic migrations |
+| Phase 2 — DEFCON/scoring accuracy | ⏳ Planned | Reconcile the two separate DEFCON computations (core game-state vs. war-detector) into one consistent, accurate signal |
+| Phase 3 — dashboard/UX | ⏳ Planned | Redesign flagged graphs, polling/lag, polish |
+| Later (optional) | ⏳ Planned | Real GEOSentinel longitude-drift tracking, real GNSS data. No AI engine for now. |
 
 ## Recent changes
 
 See [../CHANGELOG.md](../CHANGELOG.md) for the full log. Last ~5 entries:
 
+- **2026-06-12** — Overhaul Phase 0: removed unused root `de421.bsp` (+`.download`), untracked the auto-generated Cesium dist (~35 MB total off the index), and archived the stale Dec-2025 root `NebulaX_*.md` docs into tracked `archive/2025-12/`. `docs/` is now the single canonical doc set.
 - **2026-05-16** — Documentation system landed: docs/README.md hub, PROJECT/STATUS/ROADMAP/PROJECT_MAP/DEVELOPMENT created; root README rewritten to point at docs/.
 - **2026-05-16** — Workstream A complete: shared `nebulax-python-base` image, 24 service Dockerfiles migrated, dashboard multi-stage, `minimal` profile, `.dockerignore` files, postgres event retention (default 7 days).
 - **2026-05-16** — Workstream D complete: `EventType` enum filled out, `SPACETRACK_USER`/`PASS` aliases, Redis orbit cache re-enabled, `SQL_ECHO` env var, `CORS_ORIGINS` env var, GEOSentinel limitation documented.

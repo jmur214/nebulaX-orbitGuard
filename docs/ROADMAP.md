@@ -6,9 +6,11 @@ Replaces `NebulaX_Master_Plan.md` (Dec 2025). Loose buckets, not a Gantt chart �
 
 ## Short term (next 1–2 sessions)
 
+- **Phase 1 — engineering foundation (in progress).** Add CI (GitHub Actions: lint + tests + `docker compose config` validation), a real `pytest` suite for `core-api` and key services, pin all `requirements.txt`, and introduce Alembic migrations to replace `Base.metadata.create_all`.
 - **Smoke-test the resource overhaul end-to-end.** Build the shared base, build every service against it, confirm nothing regressed. Concretely: `./scripts/build_base.sh && docker compose --profile full build && docker compose --profile minimal up` should yield a working `/space` with country-attributed satellites.
-- **Decide on the `de421.bsp` and `two.md` deletions.** Both are flagged in [STATUS.md](STATUS.md) as awaiting explicit OK.
-- **Archive the Dec 2025 root `NebulaX_*.md` files** into `archive/2025-12/` once happy with the new doc system.
+- **Phase 2 — DEFCON/scoring accuracy.** DEFCON is currently computed in two unrelated places (`services/core/main.py` game-state from red/blue scores, and `services/space-guard/tracker/war_detector/scoring/classifier.py` from war-detector signals). Reconcile into one consistent, accurate signal. DEFCON stays — the goal is accuracy, not removal.
+
+> Done in Phase 0 (2026-06-12): removed unused root `de421.bsp`/`.download`, untracked the regenerated Cesium dist, archived the Dec-2025 root docs to `archive/2025-12/`.
 
 ## Medium term
 

@@ -12,6 +12,10 @@ node_modules/
 .next/
 npm-debug.log
 
+# Cesium runtime assets — regenerated at build from the `cesium` npm package
+# (see services/dashboard/Dockerfile and .devcontainer/post-create.sh). Do not commit.
+services/dashboard/public/cesium/
+
 # Docker & Environment
 .env
 .env.*
@@ -28,7 +32,9 @@ logs/
 Context_docs/
 internal_notes/
 .agent/
-archive/
+# Scratch archives are ignored, but the Dec-2025 frozen doc snapshot is kept on record.
+archive/*
+!archive/2025-12/
 reminders.md
 two.md
 

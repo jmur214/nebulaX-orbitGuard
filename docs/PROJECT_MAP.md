@@ -160,16 +160,19 @@ Reserved for future configs. Empty today.
 Empty skeletons (`python/`, `typescript/`). No code today.
 
 ## archive/
-Superseded docs from prior phases. Read-only historical record.
+Superseded docs from prior phases. Read-only historical record. `archive/2025-12/` holds the original Dec-2025 root `NebulaX_*.md` planning/status docs (now replaced by `docs/`), with its own index README. Tracked in git; scratch subdirs under `archive/` are otherwise gitignored.
 
 ## Context_docs/
-**Frozen Dec 5 2025 snapshot for AI-agent context-loading.** Do not edit. Has its own README explaining the snapshot. Each file is a duplicate of a root-level NebulaX_*.md from that date.
+**Frozen Dec 5 2025 snapshot for AI-agent context-loading.** Do not edit. Has its own README explaining the snapshot. Each file mirrors a Dec-2025 `NebulaX_*.md` (now in `archive/2025-12/`).
 
 ## internal_notes/
 Author's working notes. Gitignored.
 
 ## tests/
-Sparse; testing not yet a strong story. See ROADMAP.md.
+Sparse today (just `health_check.py`, a liveness probe). A real `pytest` suite is the focus of overhaul Phase 1. See ROADMAP.md.
+
+## services/dashboard/public/cesium/
+Cesium runtime assets, **gitignored** — regenerated at build time from the `cesium` npm package (`services/dashboard/Dockerfile`, `Dockerfile.dev`, and `.devcontainer/post-create.sh` each copy them out of `node_modules`). Present on disk after a build/setup; not tracked in git.
 
 ## .agent/, .gemini/, .claude/
 AI-agent scratch directories. Gitignored. Do not edit by hand.

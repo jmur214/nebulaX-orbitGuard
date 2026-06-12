@@ -2,6 +2,14 @@
 
 Notable changes to NebulaX/OrbitGuard, newest first. For current state, see [docs/STATUS.md](docs/STATUS.md); for the future, see [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## 2026-06-12
+
+### Project overhaul — Phase 0 (repo hygiene & doc consolidation)
+- **Removed unused root ephemeris files** `de421.bsp` and `de421.bsp.download` (~20 MB). Only `services/space-guard/tracker/de421.bsp` is referenced (`tracker/main.py:30` `load('de421.bsp')`); the root copies were unreferenced duplicates.
+- **Untracked the Cesium runtime dist** under `services/dashboard/public/cesium/` (430 files, ~15 MB). These are regenerated at build from the `cesium` npm package by `Dockerfile`, `Dockerfile.dev`, and `.devcontainer/post-create.sh`, so tracking them was redundant. Added to `.gitignore`; files remain on disk and every build path still recreates them.
+- **Archived the stale Dec-2025 root docs.** `NebulaX_AI_Handoff.md`, `NebulaX_Current_Status.md`, `NebulaX_Master_Plan.md`, `NebulaX_Resume_Assets.md`, `NebulaX_System_Context.md` moved to `archive/2025-12/` (kept tracked, with an index README). `docs/` is now the single canonical doc set. `Context_docs/` and the tracker ephemeris were left untouched.
+- **Clarified DEFCON intent:** DEFCON is *kept*; the old "remove the game elements" note in the Dec-2025 status doc does not reflect current intent. Phase 2 will make DEFCON scoring accurate and consistent (it is currently computed in two unrelated places).
+
 ## 2026-05-16
 
 ### Fixed during validation
