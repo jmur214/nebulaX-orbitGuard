@@ -13,3 +13,7 @@ venv
 .DS_Store
 *.log
 *.md
+# test-only artifacts — not needed in the production image
+tests
+pytest.ini
+requirements-dev.txt

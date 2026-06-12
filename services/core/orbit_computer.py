@@ -4,11 +4,18 @@ Computes satellite orbit paths on-demand using TLE data and Skyfield.
 """
 from skyfield.api import EarthSatellite, load, wgs84
 from datetime import datetime, timedelta, timezone
-from typing import List, Tuple, Optional
-import io
+from typing import List, Optional
+import math
 
 # Load timescale once
 ts = load.timescale()
+
+
+def _is_valid_point(lat: float, lon: float, alt: float) -> bool:
+    """Reject NaN/inf positions. Skyfield does not raise on malformed TLEs —
+    it silently propagates NaN, which would otherwise reach the API as
+    invalid JSON and break the dashboard."""
+    return all(math.isfinite(v) for v in (lat, lon, alt))
 
 
 def compute_orbit_path(tle_line1: str, tle_line2: str, sat_name: str = "SAT", 
@@ -52,9 +59,13 @@ def compute_orbit_path(tle_line1: str, tle_line2: str, sat_name: str = "SAT",
             lat = subpoint.latitude.degrees
             lon = subpoint.longitude.degrees
             alt = subpoint.elevation.km
-            
+
+            if not _is_valid_point(lat, lon, alt):
+                print(f"[!] Orbit computation produced NaN for {sat_name} (bad TLE?)")
+                return []
+
             orbit_path.append([lat, lon, alt])
-        
+
         return orbit_path
     
     except Exception as e:
@@ -76,11 +87,15 @@ def get_current_position(tle_line1: str, tle_line2: str, sat_name: str = "SAT") 
         geocentric = satellite.at(t)
         subpoint = wgs84.subpoint(geocentric)
         
-        return {
-            "lat": subpoint.latitude.degrees,
-            "lon": subpoint.longitude.degrees,
-            "alt_km": subpoint.elevation.km
-        }
+        lat = subpoint.latitude.degrees
+        lon = subpoint.longitude.degrees
+        alt = subpoint.elevation.km
+
+        if not _is_valid_point(lat, lon, alt):
+            print(f"[!] Position computation produced NaN for {sat_name} (bad TLE?)")
+            return None
+
+        return {"lat": lat, "lon": lon, "alt_km": alt}
     except Exception as e:
         print(f"[!] Position computation error: {e}")
         return None

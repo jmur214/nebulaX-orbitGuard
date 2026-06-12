@@ -2,7 +2,6 @@ import nmap
 import requests
 import schedule
 import time
-import json
 
 import os
 

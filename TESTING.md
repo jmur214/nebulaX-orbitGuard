@@ -46,10 +46,48 @@ We have a script to verify system status. It supports both workflows.
 python3 tests/health_check.py
 ```
 
-## 3. Unit Tests
-Each microservice should have its own internal unit tests.
+## 3. Unit / API Tests
+
+The core service has a real pytest suite (34 tests) covering event ingest +
+validation, `/events/recent` filtering, game-state scoring + DEFCON thresholds,
+event retention, orbit computation, and the `/satellite/orbit` endpoint.
+
+**Run it:**
+```bash
+cd services/core
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest
+```
+
+It runs against in-memory SQLite (no Postgres/Redis needed) and finishes in
+under a second — see `services/core/tests/conftest.py`.
+
+Other microservices should grow their own suites over time:
 - **Location:** `tests/` directory within each service folder.
 - **Tools:** `pytest` (Python), `jest`/`vitest` (Next.js).
+
+## 3b. Continuous Integration
+
+`.github/workflows/ci.yml` runs on every PR and push to `main`:
+- **Lint** — `ruff check .` (correctness rules only; config in `ruff.toml`)
+- **Core API tests** — the pytest suite above
+- **Migrations** — `alembic upgrade head` against a real Postgres 15 service
+  container (fresh + idempotency + schema sanity check)
+- **Compose validation** — `docker compose config` for both compose files
+- **Dashboard build** — `npm ci && next build`
+
+## 3c. Database migrations
+
+The core API now applies **Alembic** migrations at startup (replacing the old
+`Base.metadata.create_all`). Existing databases are adopted automatically — the
+baseline revision no-ops if the `events` table already exists. To create a new
+migration after editing `services/core/db/models.py`:
+
+```bash
+cd services/core
+DATABASE_URL=postgresql+asyncpg://admin:nebulax_secret@localhost:5432/nebulax_core \
+  alembic revision --autogenerate -m "describe the change"
+```
 
 ## 4. End-to-End (E2E) Scenarios
 Simulate full attack/defense loops.

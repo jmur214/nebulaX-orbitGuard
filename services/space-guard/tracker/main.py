@@ -1,11 +1,9 @@
 import time
-import json
 import requests
 import schedule
 import os
 import io
 import base64
-import random
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
@@ -52,7 +50,6 @@ def fetch_spacetrack_metadata(sat_objects):
     chunk_size = 50
     metadata_map = {}
     
-    import math
     chunks = [norad_ids[i:i + chunk_size] for i in range(0, len(norad_ids), chunk_size)]
     
     print(f" [ SpaceTrack ] Fetching Metadata for {len(norad_ids)} sats in {len(chunks)} chunks...")

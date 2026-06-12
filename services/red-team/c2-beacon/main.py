@@ -2,8 +2,6 @@ import time
 import requests
 import schedule
 import random
-import json
-import numpy as np # For realistic jitter distribution
 
 import os
 

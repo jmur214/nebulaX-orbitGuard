@@ -1,7 +1,6 @@
 import time
 import requests
 import schedule
-import json
 
 # CONFIGURATION
 INTERNAL_URL = "http://nebulax-core:8000"

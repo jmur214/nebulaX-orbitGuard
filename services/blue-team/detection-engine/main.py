@@ -1,7 +1,6 @@
 import time
 import requests
 import schedule
-from datetime import datetime
 
 import os
 

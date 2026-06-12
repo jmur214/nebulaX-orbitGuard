@@ -3,7 +3,6 @@ import time
 import schedule
 import paramiko
 import random
-import socket
 import os
 
 # CONFIGURATION
@@ -70,7 +69,7 @@ def attack_ssh():
         print(f" [!] SSH SUCCESS: {user}:{password}")
         report_event("EXPLOIT_SUCCESS", "HIGH", f"SSH Login Success: {user}", "HONEYPOT-01")
         client.close()
-    except Exception as e:
+    except Exception:
         # This is EXPECTED. We want to fail so the honeypot logs the failure.
         pass
 

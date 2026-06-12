@@ -94,7 +94,7 @@ class LaunchMonitor:
                         if is_adversary:
                             score += 10  # Additional score for imminent adversary launch
                             
-                except Exception as e:
+                except Exception:
                     continue
                     
         except Exception as e:

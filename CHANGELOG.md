@@ -4,6 +4,15 @@ Notable changes to NebulaX/OrbitGuard, newest first. For current state, see [doc
 
 ## 2026-06-12
 
+### Project overhaul — Phase 1 (engineering foundation)
+- **CI pipeline** (`.github/workflows/ci.yml`, 5 jobs): ruff lint, core-api pytest suite, Alembic migration check against a real Postgres 15 service container (fresh upgrade + idempotency + schema sanity), `docker compose config` validation for both compose files, and a full Next.js dashboard build.
+- **First real test suite**: 34 tests in `services/core/tests/` covering event ingest + pydantic validation, `/events/recent` team/exclude/limit filtering, game-state scoring + every DEFCON threshold (pinned as a safety net for the Phase 2 scoring reconciliation), event retention, `orbit_computer`, and `/satellite/orbit` (happy path, 404, bad-TLE 400, multi-sat JSON-path lookup). Runs against in-memory SQLite in <1 s — no Postgres/Redis needed.
+- **Bug found by the new tests, fixed**: Skyfield does not raise on malformed TLEs — it silently produces NaN coordinates, which `/satellite/orbit` would have serialized as invalid JSON and broken the dashboard. `orbit_computer.py` now validates positions and treats NaN as failure (same failure class as the 2026-05-16 Celestrak CSV bug).
+- **Alembic migrations** replace `Base.metadata.create_all` at startup. Baseline revision adopts existing pre-Alembic databases (no-ops if `events` exists). Async env.py reads `DATABASE_URL` — one source of truth with `db/database.py`. Validated on fresh DBs, pre-existing DBs, and via the in-app startup path.
+- **Dialect-portable persistence layer** (production behavior on Postgres unchanged): `models.py` uses `JSON().with_variant(JSONB, "postgresql")` + `sa.Uuid`; the orbit lookup uses `.as_string()` instead of Postgres-only `.astext`; the retention sweep is a portable SQLAlchemy `delete()` (extracted as testable `prune_events_older_than()`).
+- **All dependencies pinned**: `requests`/`schedule` in four services, `pandas`/`scikit-learn`/`matplotlib`/`numpy` in the tracker, `numpy` exact-pinned in core. Added `services/core/requirements-dev.txt` for test tooling.
+- **Lint baseline**: new root `ruff.toml` (correctness rules only: syntax errors, undefined names, unused imports); removed ~56 unused imports across the services. The codebase is ruff-clean under the enforced rules.
+
 ### Project overhaul — Phase 0 (repo hygiene & doc consolidation)
 - **Removed unused root ephemeris files** `de421.bsp` and `de421.bsp.download` (~20 MB). Only `services/space-guard/tracker/de421.bsp` is referenced (`tracker/main.py:30` `load('de421.bsp')`); the root copies were unreferenced duplicates.
 - **Untracked the Cesium runtime dist** under `services/dashboard/public/cesium/` (430 files, ~15 MB). These are regenerated at build from the `cesium` npm package by `Dockerfile`, `Dockerfile.dev`, and `.devcontainer/post-create.sh`, so tracking them was redundant. Added to `.gitignore`; files remain on disk and every build path still recreates them.

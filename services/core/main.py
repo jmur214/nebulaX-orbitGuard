@@ -1,16 +1,17 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, text
+from sqlalchemy import select, desc, delete
 from contextlib import asynccontextmanager
 import asyncio
 import logging
 import redis.asyncio as redis
 import os
 import json
+from datetime import datetime, timedelta, timezone
 
 # Import our internal modules
-from db.database import engine, Base, get_db, AsyncSessionLocal
+from db.database import get_db, AsyncSessionLocal
 from db.models import EventModel
 from schemas import UniversalEvent
 
@@ -28,6 +29,20 @@ EVENT_RETENTION_DAYS = int(os.getenv("EVENT_RETENTION_DAYS", "7"))
 RETENTION_LOOP_SECONDS = 6 * 60 * 60  # 6 hours
 
 
+async def prune_events_older_than(session: AsyncSession, days: int) -> int:
+    """Delete events older than `days` days. Returns the number deleted.
+
+    Uses a portable SQLAlchemy delete (works on Postgres and SQLite) with the
+    cutoff computed in Python; events.timestamp is stored as naive UTC.
+    """
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
+    result = await session.execute(
+        delete(EventModel).where(EventModel.timestamp < cutoff)
+    )
+    await session.commit()
+    return result.rowcount or 0
+
+
 async def retention_loop():
     """Background task: prune old events on a schedule."""
     if EVENT_RETENTION_DAYS <= 0:
@@ -37,11 +52,7 @@ async def retention_loop():
     while True:
         try:
             async with AsyncSessionLocal() as session:
-                result = await session.execute(
-                    text(f"DELETE FROM events WHERE timestamp < NOW() - INTERVAL '{EVENT_RETENTION_DAYS} days'")
-                )
-                await session.commit()
-                deleted = result.rowcount or 0
+                deleted = await prune_events_older_than(session, EVENT_RETENTION_DAYS)
                 if deleted:
                     logger.info(f"Retention sweep: deleted {deleted} events older than {EVENT_RETENTION_DAYS} days.")
         except asyncio.CancelledError:
@@ -50,24 +61,37 @@ async def retention_loop():
             logger.warning(f"Retention sweep failed (will retry): {e}")
         await asyncio.sleep(RETENTION_LOOP_SECONDS)
 
+def _run_migrations():
+    """Apply Alembic migrations to head (replaces the old create_all).
+
+    Runs in a worker thread (asyncio.to_thread) because Alembic's async env.py
+    calls asyncio.run(), which cannot execute inside the already-running loop.
+    """
+    from alembic import command
+    from alembic.config import Config
+    from pathlib import Path
+
+    cfg = Config(str(Path(__file__).resolve().parent / "alembic.ini"))
+    command.upgrade(cfg, "head")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifecycle Manager:
-    1. On Startup: Connect to DB, create tables, start background retention task.
+    1. On Startup: Run DB migrations, connect to Redis, start retention task.
     2. On Shutdown: Cancel retention task and close connections.
     """
-    # Create Tables (In production, use Alembic, but this is fine for MVP)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Apply schema migrations (Alembic). The baseline revision adopts
+    # pre-Alembic databases that already have the events table.
+    await asyncio.to_thread(_run_migrations)
+    logger.info("NebulaX Core: Database migrations applied")
 
     # Connect to Redis
     global redis_client
     redis_client = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
     await redis_client.ping()
     logger.info("NebulaX Core: Connected to Redis")
-
-    logger.info("NebulaX Core: Database Connected & Tables Synced")
 
     # Start event-retention background task
     retention_task = asyncio.create_task(retention_loop())
@@ -259,9 +283,11 @@ async def get_satellite_orbit(
                 logger.info(f"Orbit cache MISS {sat_name}")
 
         # 1. Find most recent TLE_UPDATE for this satellite
+        # .as_string() compiles to ->> on Postgres and JSON_EXTRACT on SQLite,
+        # so this query is dialect-portable (the old .astext was Postgres-only).
         query = select(EventModel).filter(
             EventModel.event_type == "TLE_UPDATE",
-            EventModel.payload["sat_name"].astext == sat_name
+            EventModel.payload["sat_name"].as_string() == sat_name
         ).order_by(desc(EventModel.timestamp)).limit(1)
         
         result = await db.execute(query)

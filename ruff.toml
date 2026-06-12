@@ -1,0 +1,23 @@
+# Ruff config — enforced in CI (.github/workflows/ci.yml).
+#
+# Deliberately scoped to *correctness* rules so CI failures always mean a real
+# problem: syntax errors, undefined names, unused imports. Style rules (E7xx
+# one-liners, bare excepts) are pre-existing idiom across the services and are
+# not enforced; tighten incrementally if desired.
+
+target-version = "py311"
+
+exclude = [
+    "services/dashboard",  # JS/TS — not ruff's job
+    "archive",
+    "Context_docs",
+]
+
+[lint]
+select = [
+    "E9",   # syntax errors / io errors
+    "F63",  # invalid comparisons
+    "F7",   # syntax issues (return outside function, etc.)
+    "F82",  # undefined names
+    "F401", # unused imports
+]

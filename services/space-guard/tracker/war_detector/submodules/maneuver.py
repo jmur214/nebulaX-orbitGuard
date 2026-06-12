@@ -1,4 +1,3 @@
-import numpy as np
 
 class ManeuverDetector:
     def __init__(self):

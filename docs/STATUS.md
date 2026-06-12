@@ -28,7 +28,7 @@ Recent overhaul (2026-05-15/16) reduced the resource footprint and fixed the lon
 | Phase | Status | Notes |
 |---|---|---|
 | Phase 0 — repo hygiene + doc consolidation | ✅ Done 2026-06-12 | ~35 MB of bloat untracked (de421 dupes, Cesium dist); stale root docs archived |
-| Phase 1 — engineering foundation | ⏳ Next | CI (GitHub Actions), pytest suite for core-api + key services, pinned deps, Alembic migrations |
+| Phase 1 — engineering foundation | ✅ Done 2026-06-12 | CI (5 jobs), 34-test pytest suite for core-api, all deps pinned, Alembic migrations replace create_all. Found+fixed a real NaN-orbit bug along the way |
 | Phase 2 — DEFCON/scoring accuracy | ⏳ Planned | Reconcile the two separate DEFCON computations (core game-state vs. war-detector) into one consistent, accurate signal |
 | Phase 3 — dashboard/UX | ⏳ Planned | Redesign flagged graphs, polling/lag, polish |
 | Later (optional) | ⏳ Planned | Real GEOSentinel longitude-drift tracking, real GNSS data. No AI engine for now. |
@@ -37,6 +37,7 @@ Recent overhaul (2026-05-15/16) reduced the resource footprint and fixed the lon
 
 See [../CHANGELOG.md](../CHANGELOG.md) for the full log. Last ~5 entries:
 
+- **2026-06-12** — Overhaul Phase 1: GitHub Actions CI (lint, tests, real-Postgres migration check, compose validation, dashboard build); 34-test pytest suite for core-api; Alembic migrations replace startup `create_all`; every `requirements.txt` fully pinned; ruff correctness lint clean; fixed NaN-orbit bug for malformed TLEs.
 - **2026-06-12** — Overhaul Phase 0: removed unused root `de421.bsp` (+`.download`), untracked the auto-generated Cesium dist (~35 MB total off the index), and archived the stale Dec-2025 root `NebulaX_*.md` docs into tracked `archive/2025-12/`. `docs/` is now the single canonical doc set.
 - **2026-05-16** — Documentation system landed: docs/README.md hub, PROJECT/STATUS/ROADMAP/PROJECT_MAP/DEVELOPMENT created; root README rewritten to point at docs/.
 - **2026-05-16** — Workstream A complete: shared `nebulax-python-base` image, 24 service Dockerfiles migrated, dashboard multi-stage, `minimal` profile, `.dockerignore` files, postgres event retention (default 7 days).

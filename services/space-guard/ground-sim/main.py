@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 import jwt
 import datetime
 import requests
-import os
 
 app = Flask(__name__)
 

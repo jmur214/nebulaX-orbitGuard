@@ -73,10 +73,10 @@ class ProximityDetector:
                             if dist < 10.0:  # Close intercept
                                 score += 20
                                 
-                    except Exception as e:
+                    except Exception:
                         continue
                         
-            except Exception as e:
+            except Exception:
                 continue
              
         return {

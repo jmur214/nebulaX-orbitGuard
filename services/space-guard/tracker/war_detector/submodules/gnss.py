@@ -1,7 +1,5 @@
-import requests
 import logging
 import time
-from datetime import datetime, timezone
 
 # Known GNSS jamming/spoofing hotspots based on real-world data from GPSJam.org
 # Each zone has a base probability that reflects real-world activity levels

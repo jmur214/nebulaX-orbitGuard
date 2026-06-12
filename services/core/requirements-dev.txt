@@ -1,0 +1,6 @@
+# Test/dev-only dependencies for the core service (CI installs these on top
+# of requirements.txt). Not installed in the production image.
+pytest==8.0.0
+pytest-asyncio==0.23.4
+httpx==0.26.0
+ruff==0.2.1

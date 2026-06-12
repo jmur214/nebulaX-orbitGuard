@@ -2,8 +2,6 @@ import time
 import os
 import random
 import requests
-import json
-from datetime import datetime
 
 # CONFIGURATION
 CORE_HOST = os.getenv("CORE_HOST", "nebulax-core")

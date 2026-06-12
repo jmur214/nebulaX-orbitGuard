@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff==0.2.1
+      # Rule selection lives in ruff.toml (correctness rules only)
+      - run: ruff check .
+
+  core-tests:
+    name: Core API tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            services/core/requirements.txt
+            services/core/requirements-dev.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      # Suite runs against in-memory SQLite (see tests/conftest.py) — fast,
+      # no external services needed.
+      - run: python -m pytest
+
+  migrations:
+    name: Alembic migrations (real Postgres)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/core
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: nebulax_secret
+          POSTGRES_DB: nebulax_core
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U admin -d nebulax_core"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://admin:nebulax_secret@localhost:5432/nebulax_core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: services/core/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Upgrade to head on a fresh database
+        run: alembic upgrade head
+      - name: Upgrade is idempotent
+        run: alembic upgrade head
+      - name: Schema sanity — events table exists with expected columns
+        run: |
+          python - <<'EOF'
+          import asyncio, os
+          from sqlalchemy import inspect
+          from sqlalchemy.ext.asyncio import create_async_engine
+
+          async def main():
+              eng = create_async_engine(os.environ["DATABASE_URL"])
+              async with eng.connect() as conn:
+                  cols = await conn.run_sync(
+                      lambda c: {col["name"] for col in inspect(c).get_columns("events")}
+                  )
+              await eng.dispose()
+              expected = {"id", "timestamp", "origin_module", "event_type",
+                          "severity", "classification", "context", "payload"}
+              missing = expected - cols
+              assert not missing, f"missing columns: {missing}"
+              print("events table OK:", sorted(cols))
+
+          asyncio.run(main())
+          EOF
+
+  compose-validate:
+    name: Validate docker-compose files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f docker-compose.yml config -q
+      - run: docker compose -f docker-compose.dev.yml config -q
+
+  dashboard-build:
+    name: Dashboard build (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: services/dashboard/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build

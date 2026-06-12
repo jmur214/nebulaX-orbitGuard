@@ -1,7 +1,9 @@
 requests==2.31.0
 skyfield==1.46
 schedule==1.2.1
-numpy<2.0.0
-pandas
-scikit-learn
-matplotlib
+# Pinned exact versions (were loose/unpinned). numpy stays <2.0 — skyfield 1.46
+# and the trained-model pipeline predate the numpy 2.x ABI break.
+numpy==1.26.4
+pandas==2.1.4
+scikit-learn==1.4.0
+matplotlib==3.8.2

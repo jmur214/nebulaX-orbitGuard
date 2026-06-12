@@ -2,7 +2,6 @@ import time
 import requests
 import schedule
 import random
-import json
 import os
 
 # CONFIGURATION

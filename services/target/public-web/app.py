@@ -1,8 +1,7 @@
-from flask import Flask, request, render_template_string, redirect, url_for, session
+from flask import Flask, request, redirect, url_for, session
 import sqlite3
 import requests
 import os
-from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "astra_dynamics_insecure_key"
